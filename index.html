@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>☕ カフェ・トランスフォーマーAI（挨拶・文章作成・自動検索対応版）</title>
+  <title>☕ カフェ・トランスフォーマーAI（Chat＆自動調査完成版）</title>
+  <!-- ブラウザのタブに表示されるオリジナル「カフェAI」ファビコン（SVG） -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23fdf8f2' stroke='%238d6e63' stroke-width='4'/%3E%3Cpath d='M22 16 Q20 12 22 8 M32 15 Q30 11 32 7 M42 16 Q40 12 42 8' stroke='%23e67e22' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M16 24 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z' fill='%238d6e63'/%3E%3Cpath d='M44 27 H49 C52 27 54 29 54 33.5 C54 37 52 39 49 39 H44' stroke='%238d6e63' stroke-width='4' fill='none'/%3E%3Ccircle cx='25' cy='35' r='2.5' fill='%23fff'/%3E%3Ccircle cx='35' cy='35' r='2.5' fill='%23fff'/%3E%3Cpath d='M27 41 Q30 44 33 41' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
   <style>
     :root {
       --bg-cream: #fdf8f2;
@@ -30,10 +32,24 @@
       margin-bottom: 18px;
     }
 
+    .title-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .header-logo {
+      width: 42px;
+      height: 42px;
+      flex-shrink: 0;
+    }
+
     h1 {
       font-size: 1.6rem;
       color: var(--espresso-dark);
-      margin: 0 0 6px 0;
+      margin: 0;
     }
 
     .subtitle {
@@ -176,14 +192,34 @@
       gap: 12px;
     }
 
+    .ai-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      align-self: flex-start;
+      max-width: 88%;
+      animation: popIn 0.2s ease-out;
+    }
+
+    .ai-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background-color: #fbf3e8;
+      border: 1.5px solid var(--latte-brown);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
     .message {
       padding: 11px 15px;
       border-radius: 18px;
-      max-width: 82%;
       line-height: 1.6;
       font-size: 0.95rem;
       white-space: pre-wrap;
-      animation: popIn 0.2s ease-out;
     }
 
     @keyframes popIn {
@@ -195,13 +231,14 @@
       background-color: var(--latte-brown);
       color: white;
       align-self: flex-end;
+      max-width: 82%;
       border-bottom-right-radius: 4px;
+      animation: popIn 0.2s ease-out;
     }
 
     .ai-msg {
       background-color: #f3e5d8;
       color: var(--espresso-dark);
-      align-self: flex-start;
       border-bottom-left-radius: 4px;
     }
 
@@ -266,8 +303,20 @@
 <body>
 
   <header>
-    <h1>☕ カフェ・トランスフォーマーAI</h1>
-    <div class="subtitle">挨拶・文章作成・自動調査＆GitHub knowledge.txt 自動蓄積AI</div>
+    <div class="title-wrap">
+      <!-- オリジナル「カフェ・トランスフォーマーAI」SVGアイコン -->
+      <svg class="header-logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-label="カフェAIアイコン">
+        <circle cx="32" cy="32" r="30" fill="#fbf3e8" stroke="#8d6e63" stroke-width="3"/>
+        <path d="M22 17 Q20 12 22 8 M32 16 Q30 11 32 7 M42 17 Q40 12 42 8" stroke="#e67e22" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <path d="M16 25 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z" fill="#8d6e63"/>
+        <path d="M44 28 H49 C52 28 54 30 54 33.5 C54 37 52 39 49 39 H44" stroke="#8d6e63" stroke-width="4" fill="none"/>
+        <circle cx="25" cy="35" r="2.5" fill="#ffffff"/>
+        <circle cx="35" cy="35" r="2.5" fill="#ffffff"/>
+        <path d="M27 41 Q30 44 33 41" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+      </svg>
+      <h1>カフェ・トランスフォーマーAI</h1>
+    </div>
+    <div class="subtitle">自然なChat会話・自動調査・文章作成＆GitHub knowledge.txt 自動蓄積AI</div>
   </header>
 
   <div class="card">
@@ -297,7 +346,7 @@
     <div id="chat-box"></div>
 
     <div class="input-group">
-      <textarea id="prompt-input" placeholder="挨拶や「宇宙について教えて」「コーヒーの文章を作って」と入力してね..." disabled></textarea>
+      <textarea id="prompt-input" placeholder="気軽に話しかけたり、「宇宙について教えて」「もっと詳しく！」「文章を作って」と送ってね..." disabled></textarea>
       <button type="button" id="generate-btn" class="btn-send" onclick="handleGenerateClick()" disabled>送信</button>
     </div>
   </div>
@@ -353,11 +402,22 @@
     var memoryStore = {
       topics: [],
       corpusText: '',
-      chatHistory: []
+      chatHistory: [],
+      lastDiscussedTopic: '',
+      lastTopicOffset: 0
     };
 
     var githubWriteQueue = [];
     var isGitHubWriting = false;
+
+    var AI_AVATAR_SVG = '<svg width="22" height="22" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M22 17 Q20 12 22 8 M32 16 Q30 11 32 7 M42 17 Q40 12 42 8" stroke="#e67e22" stroke-width="4" stroke-linecap="round" fill="none"/>' +
+      '<path d="M16 25 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z" fill="#8d6e63"/>' +
+      '<path d="M44 28 H49 C52 28 54 30 54 33.5 C54 37 52 39 49 39 H44" stroke="#8d6e63" stroke-width="4.5" fill="none"/>' +
+      '<circle cx="25" cy="35" r="2.8" fill="#ffffff"/>' +
+      '<circle cx="35" cy="35" r="2.8" fill="#ffffff"/>' +
+      '<path d="M27 41 Q30 44 33 41" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+      '</svg>';
 
     function getSavedToken() {
       try {
@@ -759,49 +819,91 @@
     };
 
     // ==========================================
-    // 記憶検索ヘルパー（knowledge.txt内から正確な解説文を探す）
+    // 記憶検索ヘルパー（オフセット対応で続きも話せる！）
     // ==========================================
-    function searchFactInMemory(keyword) {
+    function searchFactInMemory(keyword, sentenceOffset) {
+      if (sentenceOffset === undefined) sentenceOffset = 0;
       var lines = memoryStore.corpusText.split('\n');
       for (var l = lines.length - 1; l >= 0; l--) {
         var line = lines[l].trim();
         if (line.indexOf(keyword) !== -1 && line.indexOf('【テーマ：') !== 0) {
           var colonIdx = line.indexOf('：');
           var rawFact = (colonIdx !== -1) ? line.slice(colonIdx + 1).trim() : line.replace(/^・/, '');
-          return rawFact.split('。').slice(0, 3).join('。') + '。';
+          var sentences = rawFact.split('。').filter(function(s) { return s.trim().length > 0; });
+          if (sentences.length > 0) {
+            var start = sentenceOffset < sentences.length ? sentenceOffset : 0;
+            return sentences.slice(start, start + 3).join('。') + '。';
+          }
         }
       }
       return '';
     }
 
     // ==========================================
-    // ★Gemini級スマート応答・文章作成・自動調査エンジン
+    // ★GPT(調査・文章作成) ＋ Chat(文脈会話・雑談) 統合エンジン
     // ==========================================
     async function generateSmartGeminiReply(userInput) {
       var trimmed = userInput.trim();
-      // カッコ書きの感情表現（例：「こんにちは（圧）」）を分離して判定しやすくする
       var normalized = trimmed.replace(/[（(][^）)]*[）)]/g, '').replace(/[！!？?。、\s]/g, '');
 
-      // 1. 挨拶への完璧な対応（「こんにちは（圧）」などにも即座に反応！）
+      // 1. 挨拶への自然なChat応答
       if (/^(こんにちは|こんにちわ|こんばんは|こんばんわ|おはよう|おはようございます|やあ|ハロー|はじめまして|よろしく|おっす|ちわ)/.test(normalized)) {
-        var recent = memoryStore.topics.slice(-3).join('・') || 'いろんな知識';
         var pressureNote = (trimmed.indexOf('圧') !== -1) ? '（ビシッ！と背筋を伸ばしてご挨拶します！☕）\n' : '';
-        return pressureNote + 'こんにちは！カフェ・トランスフォーマーAIへようこそ☕\n今の記憶量は ' + memoryStore.corpusText.length.toLocaleString() + '文字（' + memoryStore.topics.length + 'テーマ）まで成長しているよ！\n「〇〇について教えて」と聞いてくれたら何でも調べて答えるし、「〇〇の文章を作って」と頼んでくれたら文章も作成するよ！';
+        var recentTopic = memoryStore.topics[memoryStore.topics.length - 1] || 'コーヒー';
+        return pressureNote + 'こんにちは！カフェ・トランスフォーマーAIへようこそ☕\n今日もいいお天気ですね！さっきまで【' + recentTopic + '】について調べていたところだよ。何か知りたいことはある？それとも雑談しようか？';
       }
 
-      if (/^(ありがとう|ありがとうございます|サンキュー|助かった|すごい|賢い|いいね|最高)/.test(normalized)) {
-        return 'ありがとうございます！そう言っていただけると励みになります☕ これからもknowledge.txtに知識をためて、もっとお役に立てるように成長しますね！';
+      // 2. 日常の雑談・感情・ねぎらい・感想への自然なChat応答
+      if (/^(ありがとう|ありがとうございます|サンキュー|助かった|すごい|賢い|いいね|最高|なるほど|へー|そうなんだ|面白い|おもしろい)/.test(normalized)) {
+        if (memoryStore.lastDiscussedTopic) {
+          return 'そう言ってもらえると嬉しいな☕ さっき話題に出た「' + memoryStore.lastDiscussedTopic + '」について、もっと詳しく知りたいことや、文章にまとめてほしいことがあったらいつでも言ってね！';
+        }
+        return 'ありがとうございます！そう言っていただけると励みになります☕ 他にも気になるテーマがあれば何でも調べてくるよ！';
+      }
+
+      if (/疲れた|ねむい|眠い|お腹すいた|おなかすいた|暇|ひま|元気|調子はどう|どう思う|おすすめ/.test(normalized)) {
+        if (/疲れた|ねむい|眠い/.test(normalized)) {
+          return 'お疲れさまです☕ そういうときは無理せず、温かいコーヒーやハーブティーでも飲んで一息つきましょう！気分転換に何か面白い雑学でも調べてお話ししましょうか？';
+        }
+        if (/お腹すいた|おなかすいた/.test(normalized)) {
+          return 'お腹がすくと集中力も切れちゃいますよね☕ カフェの焼きたてトーストや甘いケーキが恋しくなる時間ですね！何か好きな食べ物の歴史でも調べてみましょうか？';
+        }
+        if (/暇|ひま|おすすめ/.test(normalized)) {
+          var pickTopic = memoryStore.topics[Math.floor(Math.random() * memoryStore.topics.length)] || '宇宙';
+          return 'そんなときは新しい知識の旅に出ましょう☕ ちなみに最近私が学んだ【' + pickTopic + '】の話とかどうかな？「' + pickTopic + 'について教えて」って聞いてくれたら詳しく話すよ！';
+        }
+        return '私はいつでも元気いっぱいです☕ ネットの知識を吸収しながら、あなたとおしゃべりできるのが一番の楽しみだよ！今日はどんなことを調べようか？';
       }
 
       if (/^(自己紹介|あなたは誰|君は誰|何ができる|機能)/.test(normalized)) {
-        return '私は「カフェ・トランスフォーマーAI」です☕\nできることは3つあります！\n1. ネットから自動で知識を集めてGitHubの knowledge.txt に永久記憶すること\n2. 質問されたテーマをその場でWikipediaから調べて分かりやすく解説すること\n3. 「〇〇の文章を作って」と頼まれたテーマで、紹介文や物語を作成すること\n何でも気軽に話しかけてくださいね！';
+        return '私は「カフェ・トランスフォーマーAI」です☕\n【GPTの調査力】と【Chatの会話力】を合体させたAIだよ！\n1. 気になった言葉を質問すると、Wikipediaから調べて knowledge.txt に永久保存しながら解説するよ\n2. 「もっと詳しく！」「それの文章を作って」みたいに会話の流れ（文脈）も覚えているよ\n3. 普段のちょっとした雑談にも付き合うから、気軽に話しかけてね！';
       }
 
-      // 2. 文章作成モード（「〇〇の文章を作って」「〇〇について作文して」「〇〇の物語を書いて」など）
+      // 3. 文脈引き継ぎ：「もっと詳しく」「続き」「それについて」への対応
+      if (/^(もっと詳しく|もっと教えて|続き|つづき|それで|それから|詳しく|詳細)/.test(normalized)) {
+        if (memoryStore.lastDiscussedTopic) {
+          memoryStore.lastTopicOffset = (memoryStore.lastTopicOffset || 0) + 3;
+          var moreFact = searchFactInMemory(memoryStore.lastDiscussedTopic, memoryStore.lastTopicOffset);
+          if (moreFact) {
+            return '「' + memoryStore.lastDiscussedTopic + '」の続きですね☕ 記憶にあるさらに詳しい情報をお伝えします！\n\n' + moreFact;
+          } else {
+            return '「' + memoryStore.lastDiscussedTopic + '」について今持っているメモはここまでみたい☕ でも「' + memoryStore.lastDiscussedTopic + 'の文章を作って」と頼んでくれたら、これまでの知識をまとめてきれいな文章にするよ！';
+          }
+        } else {
+          return 'おっと、どのテーマの続きをお話ししましょうか？☕ 「宇宙について教えて」みたいにテーマを教えてくれたら、そこから詳しく掘り下げるよ！';
+        }
+      }
+
+      // 4. 文章作成モード（「〇〇の文章を作って」「それの文章を作って」など）
       var writeMatch = trimmed.match(/^(.+?)(?:の|についての|に関する)?(?:文章|作文|紹介文|解説文|物語|ストーリー|スピーチ|まとめ)を?(?:作って|書いて|作成して|考えて|お願い)/);
       if (writeMatch && writeMatch[1]) {
-        var writeTopic = writeMatch[1].trim();
-        var fact = searchFactInMemory(writeTopic);
+        var rawWriteTopic = writeMatch[1].trim();
+        var writeTopic = (/^(それ|これ|あれ|その|この|さっきの)$/.test(rawWriteTopic) && memoryStore.lastDiscussedTopic)
+          ? memoryStore.lastDiscussedTopic
+          : rawWriteTopic;
+
+        memoryStore.lastDiscussedTopic = writeTopic;
+        var fact = searchFactInMemory(writeTopic, 0);
         if (!fact) {
           try {
             var fetchedTopic = await fetchTopicFromWikipedia(writeTopic);
@@ -813,15 +915,15 @@
         }
 
         if (fact) {
-          return '【「' + writeTopic + '」についての紹介・解説文】\n\nみなさんは「' + writeTopic + '」についてご存知でしょうか。' + fact + 'このように、' + writeTopic + 'にはとても奥深い魅力や歴史があり、知れば知るほど新しい発見があります。ぜひこの機会に「' + writeTopic + '」の世界に触れてみてください。';
+          return '【「' + writeTopic + '」についての紹介・解説文】\n\nみなさんは「' + writeTopic + '」についてご存知でしょうか。' + fact + 'このように、' + writeTopic + 'にはとても奥深い魅力や背景があり、知れば知るほど新しい発見があります。ぜひこの機会に「' + writeTopic + '」の世界に触れてみてください。';
         } else {
           return '【「' + writeTopic + '」をテーマにした文章】\n\n静かなカフェの窓辺で温かいコーヒーを飲みながら、「' + writeTopic + '」について思いを巡らせてみました。新しい言葉やテーマに出会うたびに、世界が少しずつ広がっていくようなワクワク感がありますね。';
         }
       }
 
-      // 3. 質問・調査モード（「〇〇について調べて」「〇〇とは」「〇〇を教えて」など）
+      // 5. メインの調査＆会話モード（疑問文・単語入力・「〇〇について教えて」すべてに対応）
       var queryClean = trimmed
-        .replace(/(?:について|を|とは|って)?(?:調べて|学んで|勉強して|検索して|学習して|教えて|解説して|何|なに|ですか|だよね)[？?！!。]*$/g, '')
+        .replace(/(?:について|を|とは|って|ってなに|って何|のことも)?(?:調べて|学んで|勉強して|検索して|学習して|教えて|解説して|説明して|知ってる|知りたい|何|なに|ですか|だよね|かな)[？?！!。]*$/g, '')
         .replace(/[？?！!。、]/g, ' ')
         .trim();
 
@@ -829,41 +931,66 @@
       var targetKeyword = keywords[0] || normalized;
 
       if (targetKeyword && targetKeyword.length >= 2) {
+        memoryStore.lastDiscussedTopic = targetKeyword;
+        memoryStore.lastTopicOffset = 0;
+
         // まず自分の記憶（knowledge.txt）から探す
-        var existingFact = searchFactInMemory(targetKeyword);
+        var existingFact = searchFactInMemory(targetKeyword, 0);
         if (existingFact) {
-          return '「' + targetKeyword + '」についてですね！knowledge.txtの記憶を調べたところ、次のことがわかりました☕\n\n' + existingFact;
+          return '「' + targetKeyword + '」ですね！それならもうknowledge.txtに記憶してあるよ☕\n\n' + existingFact + '\n\n（※続きが気になるときは「もっと詳しく！」って聞いてね）';
         }
 
-        // 記憶になければ、その場で自動的にWikipediaを検索して学習＆knowledge.txt追記＆回答！
+        // 記憶になければ、その場で自動的にWikipediaを検索して学習＆knowledge.txt追記＆会話口調で回答！
         trainStatusEl.textContent = '🔍 Wikipediaで「' + targetKeyword + '」を自動調査中...';
         try {
           var topicData = await fetchTopicFromWikipedia(targetKeyword);
           if (topicData.text && topicData.titles.length > 0) {
             trainAndGrowMemory(topicData.text, topicData.titles, null, true);
-            return '「' + targetKeyword + '」についてインターネット（Wikipedia）で調べて、knowledge.txtにも新しく記憶しました☕\n\n【調査結果：' + topicData.titles[0] + '】\n' + topicData.summaryForReply;
+            return '「' + targetKeyword + '」について今すぐWikipediaで調べて、knowledge.txtにも新しく記憶したよ☕\n\n【調査メモ：' + topicData.titles[0] + '】\n' + topicData.summaryForReply + '\n\n（※「もっと詳しく！」や「文章を作って」でさらに広げられるよ）';
           }
         } catch (e) {}
       }
 
-      // 4. その他の自由な雑談への自然な返答
-      var randomTopic = memoryStore.topics[memoryStore.topics.length - 1] || 'コーヒー';
-      return 'なるほど、「' + trimmed + '」ですね☕ もし詳しく知りたいテーマがあれば「' + (targetKeyword || randomTopic) + 'について教えて」、文章を作ってほしいときは「' + (targetKeyword || randomTopic) + 'の文章を作って」と話しかけてみてくださいね！';
+      // 6. 辞書にない言葉や自由なつぶやきへの自然なChat返答
+      return '「' + trimmed + '」ですね☕ なるほど〜！もし特定の言葉やテーマについて調べてほしいときは、「〇〇とは？」や「〇〇について教えて」って聞いてくれたら今すぐ調べてknowledge.txtに保存するよ！';
     }
 
     function addMessageImmediate(text, sender) {
-      var div = document.createElement('div');
-      div.className = 'message ' + (sender === 'user' ? 'user-msg' : 'ai-msg');
-      div.textContent = text;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
-      return div;
+      if (sender === 'user') {
+        var div = document.createElement('div');
+        div.className = 'message user-msg';
+        div.textContent = text;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return div;
+      } else {
+        var row = document.createElement('div');
+        row.className = 'ai-row';
+        var avatar = document.createElement('div');
+        avatar.className = 'ai-avatar';
+        avatar.innerHTML = AI_AVATAR_SVG;
+        var bubble = document.createElement('div');
+        bubble.className = 'message ai-msg';
+        bubble.textContent = text;
+        row.appendChild(avatar);
+        row.appendChild(bubble);
+        chatBox.appendChild(row);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return bubble;
+      }
     }
 
     function addMessageWithTyping(text, sender, callback) {
+      var row = document.createElement('div');
+      row.className = 'ai-row';
+      var avatar = document.createElement('div');
+      avatar.className = 'ai-avatar';
+      avatar.innerHTML = AI_AVATAR_SVG;
       var div = document.createElement('div');
       div.className = 'message ai-msg typing-cursor';
-      chatBox.appendChild(div);
+      row.appendChild(avatar);
+      row.appendChild(div);
+      chatBox.appendChild(row);
 
       var chars = Array.from(text);
       var idx = 0;
@@ -1020,7 +1147,13 @@
 
         var loaded = await loadFromUnlimitedStorage();
         if (loaded) {
-          memoryStore = loaded;
+          memoryStore = Object.assign({
+            topics: [],
+            corpusText: '',
+            chatHistory: [],
+            lastDiscussedTopic: '',
+            lastTopicOffset: 0
+          }, loaded);
         }
 
         trainStatusEl.textContent = '📂 GitHub（280054-netizen/tomoAI）の knowledge.txt を読み込み中...';
@@ -1044,7 +1177,7 @@
 
         var isFirstEver = (!memoryStore.corpusText || memoryStore.corpusText.length <= CONTEXT_SIZE + 5);
         var greeting = isFirstEver
-          ? 'こんにちは！挨拶・調査・文章作成ができる最新バージョンに進化したよ☕ 「こんにちは」「宇宙について教えて」「コーヒーの文章を作って」など何でも話しかけてね！'
+          ? 'こんにちは！オリジナルアイコン＆自然なChat会話機能を搭載した完成版だよ☕ 気になる言葉を質問して調べたり、「もっと詳しく！」「文章を作って」、普段の雑談まで何でも話しかけてね！'
           : null;
 
         trainAndGrowMemory(fetched.text, fetched.titles, greeting, false);
