@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>☕ カフェ・トランスフォーマーAI（無制限・自動増殖モデル）</title>
+  <style>
+    :root {
+      --bg-cream: #fdf8f2;
+      --card-white: #ffffff;
+      --latte-brown: #8d6e63;
+      --espresso-dark: #4e342e;
+      --caramel-accent: #e67e22;
+      --mint-green: #27ae60;
+      --soft-border: #eadbc8;
+    }
+
+    body {
+      font-family: 'Hiragino Maru Gothic ProN', 'Quicksand', sans-serif;
+      background-color: var(--bg-cream);
+      color: var(--espresso-dark);
+      max-width: 760px;
+      margin: 25px auto;
+      padding: 0 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      color: var(--espresso-dark);
+      margin: 0 0 6px 0;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: var(--latte-brown);
+    }
+
+    .card {
+      background: var(--card-white);
+      border: 2px solid var(--soft-border);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 6px 18px rgba(78, 52, 46, 0.07);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .status-bar {
+      background-color: #fbf3e8;
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      font-size: 0.83rem;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .status-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tool-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .mini-btn {
+      background: #fff;
+      border: 1px solid var(--latte-brown);
+      color: var(--espresso-dark);
+      border-radius: 12px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    .mini-btn:hover {
+      background-color: var(--latte-brown);
+      color: white;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background-color: #eadbc8;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background-color: var(--mint-green);
+      transition: width 0.15s;
+    }
+
+    #knowledge-panel {
+      display: none;
+      background-color: #fff9f0;
+      border: 1px dashed var(--caramel-accent);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      font-size: 0.82rem;
+      max-height: 200px;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+
+    .copy-txt-btn {
+      background-color: var(--caramel-accent);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 5px 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+
+    #chat-box {
+      height: 380px;
+      overflow-y: auto;
+      background-color: #fffcf9;
+      border: 2px solid var(--soft-border);
+      border-radius: 14px;
+      padding: 15px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      padding: 11px 15px;
+      border-radius: 18px;
+      max-width: 82%;
+      line-height: 1.6;
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+      animation: popIn 0.2s ease-out;
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .user-msg {
+      background-color: var(--latte-brown);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .ai-msg {
+      background-color: #f3e5d8;
+      color: var(--espresso-dark);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+
+    .typing-cursor::after {
+      content: '▍';
+      animation: blink 0.7s infinite;
+      color: var(--caramel-accent);
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    textarea {
+      flex: 1;
+      box-sizing: border-box;
+      border: 2px solid var(--soft-border);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      background-color: #fffcf9;
+      color: var(--espresso-dark);
+      height: 50px;
+      resize: none;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--caramel-accent);
+    }
+
+    .btn-send {
+      padding: 0 22px;
+      border: none;
+      border-radius: 25px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      background-color: var(--mint-green);
+      white-space: nowrap;
+      transition: transform 0.1s;
+    }
+
+    .btn-send:active {
+      transform: scale(0.97);
+    }
+
+    .btn-send:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>☕ カフェ・トランスフォーマーAI</h1>
+    <div class="subtitle">GitHub知識ファイル（knowledge.txt）＋ネット自動収集で上限なく知識が増え続けるAI</div>
+  </header>
+
+  <div class="card">
+    <div class="status-bar" id="status-container">
+      <div class="status-top">
+        <span id="train-status">⏳ GitHub知識ファイル（knowledge.txt）にアクセス中...</span>
+        <div class="tool-buttons">
+          <button type="button" class="mini-btn" onclick="toggleKnowledgePanel()">📖 蓄積された記憶を見る</button>
+        </div>
+      </div>
+      <div class="progress-bar-bg">
+        <div id="progress-bar" class="progress-bar-fill"></div>
+      </div>
+    </div>
+
+    <div id="knowledge-panel"></div>
+
+    <div id="chat-box"></div>
+
+    <div class="input-group">
+      <textarea id="prompt-input" placeholder="質問や話しかけたい言葉を入力してね..." disabled></textarea>
+      <button type="button" id="generate-btn" class="btn-send" onclick="handleGenerateClick()" disabled>送信</button>
+    </div>
+  </div>
+
+  <script>
+    window.onerror = function(message, source, lineno) {
+      var container = document.getElementById('status-container');
+      var statusEl = document.getElementById('train-status');
+      if (container && statusEl) {
+        container.style.backgroundColor = '#fdecea';
+        container.style.border = '1px solid #e74c3c';
+        statusEl.textContent = '❌ エラー（' + lineno + '行目）: ' + message;
+      }
+    };
+
+    var GITHUB_KNOWLEDGE_FILE = './knowledge.txt';
+    var FETCH_ARTICLE_COUNT = 3;
+    var AUTO_LEARN_INTERVAL_MS = 25000;
+    var MAX_MEMORY_CHARS = Infinity;
+    var CONTEXT_SIZE = 8;
+    var EMBED_DIM = 20;
+    var LEARNING_RATE = 0.06;
+    var TOTAL_STEPS = 1200;
+    var BATCH_PER_FRAME = 150;
+    var GENERATE_LENGTH = 80;
+    var TYPING_SPEED_MS = 22;
+    var STORAGE_KEY = 'cafe_transformer_unlimited_memory_v3';
+
+    var statusContainer = document.getElementById('status-container');
+    var trainStatusEl = document.getElementById('train-status');
+    var progressBarEl = document.getElementById('progress-bar');
+    var knowledgePanel = document.getElementById('knowledge-panel');
+    var chatBox = document.getElementById('chat-box');
+    var promptInput = document.getElementById('prompt-input');
+    var generateBtn = document.getElementById('generate-btn');
+
+    var model = null;
+    var isLearningNow = false;
+    var memoryStore = {
+      topics: [],
+      corpusText: '',
+      chatHistory: []
+    };
+
+    // 1. ネットから収集した文章を、AIが迅速に検索できる構造化フォーマット（【テーマ】・キーワード：内容）で整形
+    async function fetchRandomWebArticles() {
+      var randomUrl = 'https://ja.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=' + FETCH_ARTICLE_COUNT + '&prop=extracts&exintro&explaintext&format=json&origin=*';
+      var res = await fetch(randomUrl);
+      var data = await res.json();
+      var pages = (data.query && data.query.pages) ? data.query.pages : {};
+      var keys = Object.keys(pages);
+
+      var structuredBlocks = [];
+      var titles = [];
+      for (var i = 0; i < keys.length; i++) {
+        var pId = keys[i];
+        var title = pages[pId].title;
+        var extract = pages[pId].extract;
+        if (extract && extract.trim().length > 5) {
+          titles.push(title);
+          var cleanBody = extract.replace(/\n+/g, '').trim();
+          structuredBlocks.push('【テーマ：' + title + '】\n・' + title + '：' + cleanBody);
+        }
+      }
+
+      var collectedText = structuredBlocks.join('\n\n');
+      if (collectedText.trim().length <= CONTEXT_SIZE + 5) {
+        collectedText = '【テーマ：森の喫茶店】\n・喫茶店：森の奥にある小さな喫茶店では、いつも温かいミルクティーの香りが漂っていました。';
+        titles = ['森の喫茶店'];
+      }
+      return { text: collectedText.trim(), titles: titles };
+    }
+
+    // 2. ハイブリッド・トランスフォーマー
+    function SmartMiniTransformer(text) {
+      this.rawText = text;
+      var activeSample = text.slice(-40000);
+      this.chars = Array.from(new Set(activeSample));
+      this.vocabSize = this.chars.length;
+      this.charToId = {};
+      this.idToChar = {};
+      var self = this;
+      this.chars.forEach(function(ch, idx) {
+        self.charToId[ch] = idx;
+        self.idToChar[idx] = ch;
+      });
+
+      this.data = Array.from(activeSample).map(function(ch) { return self.charToId[ch]; });
+      this.tokenEmbed = this.createMatrix(this.vocabSize, EMBED_DIM);
+      this.posEmbed = this.createMatrix(CONTEXT_SIZE, EMBED_DIM);
+      this.Wq = this.createMatrix(EMBED_DIM, EMBED_DIM);
+      this.Wk = this.createMatrix(EMBED_DIM, EMBED_DIM);
+      this.Wv = this.createMatrix(EMBED_DIM, EMBED_DIM);
+      this.Wout = this.createMatrix(EMBED_DIM, this.vocabSize);
+
+      this.ngramMap = {};
+      var ngramSample = Array.from(text.slice(-100000));
+      for (var n = 2; n <= 4; n++) {
+        for (var i = 0; i <= ngramSample.length - n; i++) {
+          var prefix = ngramSample.slice(i, i + n - 1).join('');
+          var nextCh = ngramSample[i + n - 1];
+          if (!this.ngramMap[prefix]) this.ngramMap[prefix] = {};
+          this.ngramMap[prefix][nextCh] = (this.ngramMap[prefix][nextCh] || 0) + 1;
+        }
+      }
+    }
+
+    SmartMiniTransformer.prototype.createMatrix = function(rows, cols) {
+      var scale = Math.sqrt(2.0 / (rows + cols));
+      var mat = [];
+      for (var r = 0; r < rows; r++) {
+        var row = [];
+        for (var c = 0; c < cols; c++) {
+          row.push((Math.random() * 2 - 1) * scale);
+        }
+        mat.push(row);
+      }
+      return mat;
+    };
+
+    SmartMiniTransformer.prototype.softmax = function(arr, temp) {
+      if (temp === undefined) temp = 1.0;
+      var maxVal = Math.max.apply(null, arr);
+      var exps = arr.map(function(v) { return Math.exp((v - maxVal) / temp); });
+      var sum = exps.reduce(function(a, b) { return a + b; }, 0);
+      return exps.map(function(e) { return e / sum; });
+    };
+
+    SmartMiniTransformer.prototype.matMul = function(A, B) {
+      var rowsA = A.length;
+      var colsA = A[0].length;
+      var colsB = B[0].length;
+      var result = [];
+      for (var i = 0; i < rowsA; i++) {
+        result.push(new Array(colsB).fill(0));
+        for (var k = 0; k < colsA; k++) {
+          for (var j = 0; j < colsB; j++) {
+            result[i][j] += A[i][k] * B[k][j];
+          }
+        }
+      }
+      return result;
+    };
+
+    SmartMiniTransformer.prototype.forward = function(inputIds) {
+      var seqLen = inputIds.length;
+      var self = this;
+      var X = inputIds.map(function(id, pos) {
+        return self.tokenEmbed[id].map(function(val, d) { return val + self.posEmbed[pos][d]; });
+      });
+
+      var Q = this.matMul(X, this.Wq);
+      var K = this.matMul(X, this.Wk);
+      var V = this.matMul(X, this.Wv);
+
+      var scale = Math.sqrt(EMBED_DIM);
+      var attnWeights = [];
+      for (var i = 0; i < seqLen; i++) {
+        var scores = [];
+        for (var j = 0; j <= i; j++) {
+          var dot = 0;
+          for (var d = 0; d < EMBED_DIM; d++) dot += Q[i][d] * K[j][d];
+          scores.push(dot / scale);
+        }
+        attnWeights.push(this.softmax(scores));
+      }
+
+      var attnOut = [];
+      for (var i2 = 0; i2 < seqLen; i2++) {
+        var vec = new Array(EMBED_DIM).fill(0);
+        for (var j2 = 0; j2 <= i2; j2++) {
+          var w = attnWeights[i2][j2];
+          for (var d2 = 0; d2 < EMBED_DIM; d2++) {
+            vec[d2] += w * V[j2][d2];
+          }
+        }
+        attnOut.push(vec.map(function(v, d) { return v + X[i2][d]; }));
+      }
+
+      var lastHidden = attnOut[seqLen - 1];
+      var logits = new Array(this.vocabSize).fill(0);
+      for (var v = 0; v < this.vocabSize; v++) {
+        for (var d3 = 0; d3 < EMBED_DIM; d3++) {
+          logits[v] += lastHidden[d3] * this.Wout[d3][v];
+        }
+      }
+
+      return { logits: logits, lastHidden: lastHidden, X: X, seqLen: seqLen };
+    };
+
+    SmartMiniTransformer.prototype.trainStep = function() {
+      var startIdx = Math.floor(Math.random() * (this.data.length - CONTEXT_SIZE));
+      var inputIds = this.data.slice(startIdx, startIdx + CONTEXT_SIZE);
+      var targetId = this.data[startIdx + CONTEXT_SIZE];
+
+      var cache = this.forward(inputIds);
+      var probs = this.softmax(cache.logits);
+      var loss = -Math.log(Math.max(probs[targetId], 1e-7));
+
+      var dLogits = probs.slice();
+      dLogits[targetId] -= 1.0;
+
+      var dHidden = new Array(EMBED_DIM).fill(0);
+      for (var d = 0; d < EMBED_DIM; d++) {
+        for (var v = 0; v < this.vocabSize; v++) {
+          dHidden[d] += dLogits[v] * this.Wout[d][v];
+          this.Wout[d][v] -= LEARNING_RATE * cache.lastHidden[d] * dLogits[v];
+        }
+      }
+
+      var lastPos = cache.seqLen - 1;
+      var lastTokenId = inputIds[lastPos];
+      for (var d2 = 0; d2 < EMBED_DIM; d2++) {
+        var grad = dHidden[d2];
+        this.tokenEmbed[lastTokenId][d2] -= LEARNING_RATE * grad;
+        this.posEmbed[lastPos][d2] -= LEARNING_RATE * grad;
+
+        for (var d3 = 0; d3 < EMBED_DIM; d3++) {
+          this.Wv[d3][d2] -= LEARNING_RATE * 0.5 * cache.X[lastPos][d3] * grad;
+          this.Wq[d3][d2] -= LEARNING_RATE * 0.2 * cache.X[lastPos][d3] * grad;
+          this.Wk[d3][d2] -= LEARNING_RATE * 0.2 * cache.X[lastPos][d3] * grad;
+        }
+      }
+      return loss;
+    };
+
+    SmartMiniTransformer.prototype.generateNatural = function(seedText, maxLen) {
+      var currentText = seedText;
+      var self = this;
+
+      for (var i = 0; i < maxLen; i++) {
+        var recentChars = Array.from(currentText).slice(-CONTEXT_SIZE);
+        var inputIds = recentChars.map(function(ch) {
+          return self.charToId[ch] !== undefined ? self.charToId[ch] : 0;
+        });
+
+        var out = this.forward(inputIds);
+        var probs = this.softmax(out.logits, 0.55);
+
+        for (var len = 3; len >= 1; len--) {
+          if (recentChars.length >= len) {
+            var key = recentChars.slice(-len).join('');
+            var candidates = this.ngramMap[key];
+            if (candidates) {
+              var boostWeight = len * 4.5;
+              Object.keys(candidates).forEach(function(ch) {
+                var id = self.charToId[ch];
+                if (id !== undefined) {
+                  probs[id] += candidates[ch] * boostWeight;
+                }
+              });
+              break;
+            }
+          }
+        }
+
+        var sum = probs.reduce(function(a, b) { return a + b; }, 0);
+        var r = Math.random() * sum;
+        var cumulative = 0;
+        var nextId = 0;
+        for (var v = 0; v < probs.length; v++) {
+          cumulative += probs[v];
+          if (r <= cumulative) {
+            nextId = v;
+            break;
+          }
+        }
+
+        var nextChar = this.idToChar[nextId];
+        if (nextChar === '\n' || nextChar === '【') break;
+        currentText += nextChar;
+
+        if (i > 25 && nextChar === '。') {
+          break;
+        }
+      }
+      return currentText;
+    };
+
+    // 3. 構造化 knowledge.txt から迅速に検索して会話返答するエンジン
+    function generateConversationalReply(userInput) {
+      var text = memoryStore.corpusText;
+      var cleaned = userInput.replace(/[？?！!。、はがのをにへとでやもかなだよねについて教えて]/g, ' ');
+      var keywords = cleaned.split(/\s+/).filter(function(w) { return w.length >= 1; });
+
+      var matchedSentence = '';
+      var matchedKeyword = '';
+
+      // まず「・キーワード：解説文」の構造行から最速で検索
+      var lines = text.split('\n');
+      for (var k = 0; k < keywords.length; k++) {
+        var kw = keywords[k];
+        for (var l = lines.length - 1; l >= 0; l--) {
+          var line = lines[l].trim();
+          if (line.indexOf(kw) !== -1 && line.indexOf('【テーマ：') !== 0) {
+            var colonIdx = line.indexOf('：');
+            matchedSentence = (colonIdx !== -1) ? line.slice(colonIdx + 1).trim() : line.replace(/^・/, '');
+            matchedKeyword = kw;
+            break;
+          }
+        }
+        if (matchedSentence) break;
+      }
+
+      if (matchedSentence) {
+        var seed = matchedSentence.slice(0, 10);
+        var generatedBody = model.generateNatural(seed, GENERATE_LENGTH);
+        return '「' + matchedKeyword + '」についてですね！知識ファイル（' + text.length.toLocaleString() + '文字分）を調べたところ、' + generatedBody + (generatedBody.endsWith('。') ? '' : '。');
+      } else {
+        var contentLines = lines.filter(function(ln) { return ln.indexOf('・') === 0; });
+        var baseLine = contentLines.length > 0
+          ? contentLines[Math.floor(Math.random() * contentLines.length)].replace(/^・[^：]+：/, '')
+          : text.slice(0, 20);
+        var fallbackSeed = baseLine.slice(0, 8);
+        var generated = model.generateNatural(fallbackSeed, GENERATE_LENGTH);
+        var recentTopic = memoryStore.topics.slice(-2).join('・') || 'いろんな知識';
+        return 'なるほど、「' + userInput + '」ですね！最近学んだ【' + recentTopic + '】の知識からつなげると、' + generated + (generated.endsWith('。') ? '' : '。');
+      }
+    }
+
+    // 4. 演出＆knowledge.txt形式コピー機能
+    function addMessageImmediate(text, sender) {
+      var div = document.createElement('div');
+      div.className = 'message ' + (sender === 'user' ? 'user-msg' : 'ai-msg');
+      div.textContent = text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return div;
+    }
+
+    function addMessageWithTyping(text, sender, callback) {
+      var div = document.createElement('div');
+      div.className = 'message ai-msg typing-cursor';
+      chatBox.appendChild(div);
+
+      var chars = Array.from(text);
+      var idx = 0;
+      function typeNext() {
+        if (idx < chars.length) {
+          div.textContent += chars[idx];
+          idx++;
+          chatBox.scrollTop = chatBox.scrollHeight;
+          setTimeout(typeNext, TYPING_SPEED_MS);
+        } else {
+          div.classList.remove('typing-cursor');
+          if (callback) callback();
+        }
+      }
+      typeNext();
+    }
+
+    function toggleKnowledgePanel() {
+      if (knowledgePanel.style.display === 'block') {
+        knowledgePanel.style.display = 'none';
+      } else {
+        knowledgePanel.style.display = 'block';
+        renderKnowledgePanel();
+      }
+    }
+
+    function copyKnowledgeForGitHub() {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(memoryStore.corpusText).then(function() {
+          alert('✅ 学んだ全知識（' + memoryStore.corpusText.length.toLocaleString() + '文字）をコピーしました！そのままGitHubの knowledge.txt に貼り付けて保存できます。');
+        });
+      }
+    }
+
+    function renderKnowledgePanel() {
+      var previewText = memoryStore.corpusText.slice(-3000);
+      var prefixNote = memoryStore.corpusText.length > 3000 ? '（※最新の3,000文字を抜粋表示中）\n\n' : '';
+      knowledgePanel.innerHTML =
+        '<button type="button" class="copy-txt-btn" onclick="copyKnowledgeForGitHub()">📋 knowledge.txt用に全知識をコピー</button><br>' +
+        '<strong>🧠 無制限・自動増殖メモリ（総量: ' + memoryStore.corpusText.length.toLocaleString() + '文字｜テーマ数: ' +
+        memoryStore.topics.length + '個）:</strong><br>' +
+        '<span style="color:#8d6e63;font-size:0.75rem;">最近学んだテーマ: ' + (memoryStore.topics.slice(-10).join(' / ') || 'なし') + '</span><br><br>' +
+        prefixNote + (previewText || 'まだ学習データがありません');
+    }
+
+    // 5. 無制限メモリ保存
+    function saveToPermanentMemory() {
+      try {
+        if (memoryStore.chatHistory.length > 20) {
+          memoryStore.chatHistory = memoryStore.chatHistory.slice(-20);
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryStore));
+      } catch (e) {
+        try {
+          var compactCache = {
+            topics: memoryStore.topics,
+            corpusText: memoryStore.corpusText.slice(-1500000),
+            chatHistory: memoryStore.chatHistory
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(compactCache));
+        } catch (e2) {}
+      }
+    }
+
+    async function fetchGitHubKnowledgeFile() {
+      try {
+        var res = await fetch(GITHUB_KNOWLEDGE_FILE + '?t=' + Date.now());
+        if (res.ok) {
+          var text = await res.text();
+          if (text && text.trim().length > 5) {
+            return text.trim();
+          }
+        }
+      } catch (e) {}
+      return '';
+    }
+
+    function trainAndGrowMemory(newText, newTitles, announceMessage, isSilentBackground) {
+      if (isLearningNow) return;
+      isLearningNow = true;
+
+      if (newText && memoryStore.corpusText.indexOf(newText.slice(0, 25)) === -1) {
+        var combined = (memoryStore.corpusText ? memoryStore.corpusText + '\n\n' : '') + newText;
+        memoryStore.corpusText = (MAX_MEMORY_CHARS === Infinity) ? combined : combined.slice(-MAX_MEMORY_CHARS);
+      }
+
+      newTitles.forEach(function(t) {
+        if (memoryStore.topics.indexOf(t) === -1) {
+          memoryStore.topics.push(t);
+        }
+      });
+
+      var nextModel = new SmartMiniTransformer(memoryStore.corpusText);
+      var step = 0;
+
+      function fastTrainLoop() {
+        if (step >= TOTAL_STEPS) {
+          model = nextModel;
+          isLearningNow = false;
+          progressBarEl.style.width = '100%';
+          trainStatusEl.textContent = '✅ 無制限記憶アクティブ｜総量: ' + memoryStore.corpusText.length.toLocaleString() + '文字（' + memoryStore.topics.length + 'テーマ）';
+          promptInput.disabled = false;
+          generateBtn.disabled = false;
+
+          if (knowledgePanel.style.display === 'block') {
+            renderKnowledgePanel();
+          }
+
+          saveToPermanentMemory();
+
+          if (announceMessage) {
+            memoryStore.chatHistory.push({ sender: 'ai', text: announceMessage });
+            saveToPermanentMemory();
+            addMessageWithTyping(announceMessage, 'ai');
+          }
+          return;
+        }
+
+        for (var i = 0; i < BATCH_PER_FRAME && step < TOTAL_STEPS; i++) {
+          nextModel.trainStep();
+          step++;
+        }
+
+        var percent = Math.round((step / TOTAL_STEPS) * 100);
+        progressBarEl.style.width = percent + '%';
+        trainStatusEl.textContent = isSilentBackground
+          ? '🔄 裏側で新しい知識を自動吸収中... ' + percent + '%'
+          : '⚡ 無制限メモリへ超高速学習中... ' + percent + '%';
+
+        setTimeout(fastTrainLoop, 5);
+      }
+
+      fastTrainLoop();
+    }
+
+    async function autoGrowInBackground() {
+      if (isLearningNow) return;
+      try {
+        trainStatusEl.textContent = '🌐 裏側で新しい知識を自動収集中...';
+        var fetched = await fetchRandomWebArticles();
+        trainAndGrowMemory(fetched.text, fetched.titles, null, true);
+      } catch (e) {}
+    }
+
+    // 6. 起動時の完全自動パイプライン
+    async function bootAI() {
+      try {
+        var savedJson = localStorage.getItem(STORAGE_KEY);
+        if (savedJson) {
+          memoryStore = JSON.parse(savedJson);
+        }
+
+        trainStatusEl.textContent = '📂 GitHub知識ファイル（knowledge.txt）を読み込み中...';
+        var githubText = await fetchGitHubKnowledgeFile();
+        if (githubText && memoryStore.corpusText.indexOf(githubText.slice(0, 25)) === -1) {
+          var merged = githubText + (memoryStore.corpusText ? '\n\n' + memoryStore.corpusText : '');
+          memoryStore.corpusText = (MAX_MEMORY_CHARS === Infinity) ? merged : merged.slice(-MAX_MEMORY_CHARS);
+          if (memoryStore.topics.indexOf('GitHub知識ベース(knowledge.txt)') === -1) {
+            memoryStore.topics.unshift('GitHub知識ベース(knowledge.txt)');
+          }
+        }
+
+        if (memoryStore.chatHistory && memoryStore.chatHistory.length > 0) {
+          memoryStore.chatHistory.forEach(function(item) {
+            addMessageImmediate(item.text, item.sender);
+          });
+        }
+
+        trainStatusEl.textContent = '🌐 ネットから新しい知識を自動収集して記憶を増殖中...';
+        var fetched = await fetchRandomWebArticles();
+
+        var isFirstEver = (!memoryStore.corpusText || memoryStore.corpusText.length <= CONTEXT_SIZE + 5);
+        var greeting = isFirstEver
+          ? 'こんにちは！' + (githubText ? 'GitHubの「knowledge.txt」と、' : '') + 'インターネットから集めた【' + fetched.titles.join('・') + '】の知識を学習したよ！コーヒーや宇宙、気になるテーマを何でも聞いてみてね！'
+          : null;
+
+        if (!isFirstEver && memoryStore.chatHistory.length === 0) {
+          greeting = 'おかえりなさい！これまでの記憶（' + memoryStore.corpusText.length.toLocaleString() + '文字）に、新しく【' + fetched.titles.join('・') + '】の知識も自動追加したよ！';
+        }
+
+        trainAndGrowMemory(fetched.text, fetched.titles, greeting, false);
+
+        setInterval(autoGrowInBackground, AUTO_LEARN_INTERVAL_MS);
+
+      } catch (err) {
+        statusContainer.style.backgroundColor = '#fdecea';
+        trainStatusEl.textContent = '❌ 起動エラー: ' + err.message;
+      }
+    }
+
+    function handleGenerateClick() {
+      if (!model) return;
+      var prompt = promptInput.value.trim();
+      if (!prompt) {
+        prompt = 'コーヒーについて教えて！';
+      }
+
+      addMessageImmediate(prompt, 'user');
+      memoryStore.chatHistory.push({ sender: 'user', text: prompt });
+      promptInput.value = '';
+      promptInput.disabled = true;
+      generateBtn.disabled = true;
+
+      var reply = generateConversationalReply(prompt);
+      memoryStore.chatHistory.push({ sender: 'ai', text: reply });
+      saveToPermanentMemory();
+
+      addMessageWithTyping(reply, 'ai', function() {
+        promptInput.disabled = false;
+        generateBtn.disabled = false;
+        promptInput.focus();
+      });
+    }
+
+    promptInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleGenerateClick();
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', bootAI);
+  </script>
+</body>
+</html>
