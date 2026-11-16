@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>☕ カフェ・トランスフォーマーAI（GitHub自動追記・無制限モデル）</title>
+  <title>☕ カフェ・トランスフォーマーAI（テーマ指定学習＆GitHub自動追記）</title>
   <style>
     :root {
       --bg-cream: #fdf8f2;
@@ -93,16 +93,6 @@
       color: white;
     }
 
-    .mini-btn.github-sync-btn {
-      border-color: var(--sky-blue);
-      color: var(--sky-blue);
-    }
-
-    .mini-btn.github-sync-btn:hover {
-      background-color: var(--sky-blue);
-      color: white;
-    }
-
     .progress-bar-bg {
       width: 100%;
       height: 6px;
@@ -116,51 +106,6 @@
       width: 0%;
       background-color: var(--mint-green);
       transition: width 0.15s;
-    }
-
-    /* GitHub自動連携設定パネル（初回のみ設定） */
-    #github-config-panel {
-      display: none;
-      background-color: #f4f9fc;
-      border: 1px dashed var(--sky-blue);
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 12px;
-      font-size: 0.82rem;
-      line-height: 1.5;
-    }
-
-    .config-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin: 8px 0;
-    }
-
-    @media (max-width: 600px) {
-      .config-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .config-input {
-      border: 1px solid #b8d8eb;
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 0.82rem;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    .save-config-btn {
-      background-color: var(--sky-blue);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 6px 14px;
-      font-size: 0.8rem;
-      font-weight: bold;
-      cursor: pointer;
     }
 
     #knowledge-panel {
@@ -280,16 +225,15 @@
 
   <header>
     <h1>☕ カフェ・トランスフォーマーAI</h1>
-    <div class="subtitle">ネット収集 ➔ GitHubの knowledge.txt へ自動追記して育ち続けるAI</div>
+    <div class="subtitle">「〇〇について調べて学んで！」で指定テーマも集中学習するAI</div>
   </header>
 
   <div class="card">
     <div class="status-bar" id="status-container">
       <div class="status-top">
-        <span id="train-status">⏳ GitHub知識ファイル（knowledge.txt）にアクセス中...</span>
+        <span id="train-status">⏳ GitHubの knowledge.txt と記憶にアクセス中...</span>
         <div class="tool-buttons">
           <button type="button" class="mini-btn" onclick="toggleKnowledgePanel()">📖 蓄積された記憶を見る</button>
-          <button type="button" class="mini-btn github-sync-btn" onclick="toggleGitHubConfigPanel()">🔑 GitHub自動保存設定</button>
         </div>
       </div>
       <div class="progress-bar-bg">
@@ -297,25 +241,12 @@
       </div>
     </div>
 
-    <!-- GitHub自動追記用の設定パネル -->
-    <div id="github-config-panel">
-      <strong>🔑 GitHub「knowledge.txt」への全自動追記設定（一度保存すればずっと自動！）</strong><br>
-      <span style="font-size:0.75rem; color:#555;">※raw.githack.comのURLからユーザー名とリポジトリ名は自動で読み取ります。トークン（ghp_...）を入れると自動でknowledge.txtに書き込まれます！</span>
-      <div class="config-grid">
-        <input type="text" id="gh-owner" class="config-input" placeholder="GitHubユーザー名（自動検出）">
-        <input type="text" id="gh-repo" class="config-input" placeholder="リポジトリ名（自動検出）">
-      </div>
-      <input type="password" id="gh-token" class="config-input" style="margin-bottom:8px;" placeholder="GitHub Personal Access Token（ghp_xxxx...）">
-      <button type="button" class="save-config-btn" onclick="saveGitHubConfig()">💾 設定を保存して自動追記をオンにする</button>
-      <span id="gh-sync-badge" style="margin-left:8px; font-size:0.75rem; color:#27ae60;"></span>
-    </div>
-
     <div id="knowledge-panel"></div>
 
     <div id="chat-box"></div>
 
     <div class="input-group">
-      <textarea id="prompt-input" placeholder="質問や話しかけたい言葉を入力してね..." disabled></textarea>
+      <textarea id="prompt-input" placeholder="質問や「宇宙について調べて学んで！」と入力してね..." disabled></textarea>
       <button type="button" id="generate-btn" class="btn-send" onclick="handleGenerateClick()" disabled>送信</button>
     </div>
   </div>
@@ -332,10 +263,17 @@
     };
 
     // ==========================================
-    // 調整可能なパラメータ（GitHub自動追記・無制限増殖設定）
+    // GitHub自動連携設定
     // ==========================================
-    var GITHUB_KNOWLEDGE_FILE = './knowledge.txt';
+    var GITHUB_OWNER = '280054-netizen';
+    var GITHUB_REPO = 'tomoAI';
+    var GITHUB_TOKEN = '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';
     var GITHUB_TARGET_PATH = 'knowledge.txt';
+    var GITHUB_KNOWLEDGE_FILE = './knowledge.txt';
+
+    // ==========================================
+    // AI学習・記憶パラメータ
+    // ==========================================
     var FETCH_ARTICLE_COUNT = 3;
     var AUTO_LEARN_INTERVAL_MS = 25000;
     var MAX_MEMORY_CHARS = Infinity;
@@ -344,15 +282,15 @@
     var LEARNING_RATE = 0.06;
     var TOTAL_STEPS = 1200;
     var BATCH_PER_FRAME = 150;
-    var GENERATE_LENGTH = 80;
+    var GENERATE_LENGTH = 70;
     var TYPING_SPEED_MS = 22;
+    var DB_NAME = 'CafeTransformerUnlimitedDB';
+    var DB_STORE = 'memoryStore';
     var STORAGE_KEY = 'cafe_transformer_unlimited_memory_v3';
-    var GH_CONFIG_KEY = 'cafe_transformer_gh_auto_sync_v1';
 
     var statusContainer = document.getElementById('status-container');
     var trainStatusEl = document.getElementById('train-status');
     var progressBarEl = document.getElementById('progress-bar');
-    var githubConfigPanel = document.getElementById('github-config-panel');
     var knowledgePanel = document.getElementById('knowledge-panel');
     var chatBox = document.getElementById('chat-box');
     var promptInput = document.getElementById('prompt-input');
@@ -360,6 +298,7 @@
 
     var model = null;
     var isLearningNow = false;
+    var ghSyncStatus = '待機中';
     var memoryStore = {
       topics: [],
       corpusText: '',
@@ -367,50 +306,20 @@
     };
 
     // ==========================================
-    // GitHub自動連携設定の読み込み・自動検出
+    // 1. Wikipediaの記号ノイズ（カッコや英語数式など）を綺麗に掃除する関数
     // ==========================================
-    function loadGitHubConfig() {
-      var cfg = { owner: '', repo: '', token: '' };
-      try {
-        var saved = localStorage.getItem(GH_CONFIG_KEY);
-        if (saved) cfg = JSON.parse(saved);
-      } catch (e) {}
-
-      // raw.githack.com または github.io のURLからユーザー名とリポジトリ名を自動推測
-      if (!cfg.owner || !cfg.repo) {
-        var host = window.location.hostname;
-        var pathParts = window.location.pathname.split('/').filter(Boolean);
-        if (host.indexOf('githack.com') !== -1 && pathParts.length >= 2) {
-          cfg.owner = cfg.owner || pathParts[0];
-          cfg.repo = cfg.repo || pathParts[1];
-        } else if (host.indexOf('github.io') !== -1 && pathParts.length >= 1) {
-          cfg.owner = cfg.owner || host.split('.')[0];
-          cfg.repo = cfg.repo || pathParts[0];
-        }
-      }
-
-      document.getElementById('gh-owner').value = cfg.owner || '';
-      document.getElementById('gh-repo').value = cfg.repo || '';
-      document.getElementById('gh-token').value = cfg.token || '';
-      return cfg;
+    function cleanWikipediaText(rawText) {
+      if (!rawText) return '';
+      var cleaned = rawText
+        .replace(/（[^（）]*）/g, '') // 読み仮名などの全角カッコ内を除去して読みやすくする
+        .replace(/\([^()]*\)/g, '')  // 半角カッコ内を除去
+        .replace(/\[[^\]]*\]/g, '')  // [1] などの注釈を除去
+        .replace(/[「」『』【】()（）]/g, '') // チグハグになりやすい孤立カッコ類を除去
+        .replace(/\s+/g, '')         // 余分な空白や改行を除去
+        .trim();
+      return cleaned;
     }
 
-    function saveGitHubConfig() {
-      var cfg = {
-        owner: document.getElementById('gh-owner').value.trim(),
-        repo: document.getElementById('gh-repo').value.trim(),
-        token: document.getElementById('gh-token').value.trim()
-      };
-      localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg));
-      document.getElementById('gh-sync-badge').textContent = '✅ 保存完了！今ある記憶をGitHubへ同期中...';
-      syncToGitHubKnowledgeFile(memoryStore.corpusText, true);
-    }
-
-    function toggleGitHubConfigPanel() {
-      githubConfigPanel.style.display = (githubConfigPanel.style.display === 'block') ? 'none' : 'block';
-    }
-
-    // UTF-8対応 Base64 エンコード・デコード（日本語文字化け防止）
     function utf8ToBase64(str) {
       return btoa(unescape(encodeURIComponent(str)));
     }
@@ -418,24 +327,17 @@
       return decodeURIComponent(escape(atob(b64.replace(/\n/g, ''))));
     }
 
-    // ==========================================
-    // GitHub API を使って knowledge.txt に自動追記する関数
-    // ==========================================
-    async function syncToGitHubKnowledgeFile(newTextBlock, isFullSync) {
-      var cfg = loadGitHubConfig();
-      if (!cfg.owner || !cfg.repo || !cfg.token || !newTextBlock) {
-        return false;
-      }
+    async function syncToGitHubKnowledgeFile(newTextBlock) {
+      if (!GITHUB_OWNER || !GITHUB_REPO || !GITHUB_TOKEN || !newTextBlock) return false;
 
-      var apiUrl = 'https://api.github.com/repos/' + cfg.owner + '/' + cfg.repo + '/contents/' + GITHUB_TARGET_PATH;
+      var apiUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + GITHUB_TARGET_PATH;
       var headers = {
-        'Authorization': 'Bearer ' + cfg.token,
+        'Authorization': 'Bearer ' + GITHUB_TOKEN,
         'Accept': 'application/vnd.github+json',
         'Content-Type': 'application/json'
       };
 
       try {
-        // 1. 現在のGitHub上の knowledge.txt の内容と最新SHAを取得
         var sha = null;
         var currentRemoteText = '';
         var getRes = await fetch(apiUrl + '?t=' + Date.now(), { headers: headers });
@@ -447,21 +349,14 @@
           }
         }
 
-        // 2. 重複をチェックして新しい知識を末尾に自動連結
-        var updatedText = currentRemoteText;
-        if (isFullSync) {
-          if (currentRemoteText.indexOf(newTextBlock.slice(0, 30)) === -1) {
-            updatedText = (currentRemoteText ? currentRemoteText.trim() + '\n\n' : '') + newTextBlock.trim();
-          }
-        } else {
-          if (currentRemoteText.indexOf(newTextBlock.slice(0, 25)) === -1) {
-            updatedText = (currentRemoteText ? currentRemoteText.trim() + '\n\n' : '') + newTextBlock.trim();
-          } else {
-            return true; // すでに追記済み
-          }
+        if (currentRemoteText.indexOf(newTextBlock.slice(0, 25)) !== -1) {
+          ghSyncStatus = 'GitHub同期済み';
+          updateStatusDisplay();
+          return true;
         }
 
-        // 3. GitHub上の knowledge.txt を自動で更新（コミット）
+        var updatedText = (currentRemoteText ? currentRemoteText.trim() + '\n\n' : '') + newTextBlock.trim();
+
         var putBody = {
           message: 'Auto-learn: 新しい知識をknowledge.txtに自動追記',
           content: utf8ToBase64(updatedText)
@@ -475,21 +370,78 @@
         });
 
         if (putRes.ok) {
-          var badge = document.getElementById('gh-sync-badge');
-          if (badge) badge.textContent = '✅ GitHubの knowledge.txt へ自動追記成功！';
+          ghSyncStatus = 'GitHub自動追記成功✅';
+          updateStatusDisplay();
           return true;
         } else {
           var errData = await putRes.json();
-          trainStatusEl.textContent = '⚠️ GitHub自動追記エラー: ' + (errData.message || putRes.status);
+          ghSyncStatus = 'GitHubエラー(' + (errData.message || putRes.status) + ')';
+          updateStatusDisplay();
           return false;
         }
       } catch (e) {
-        console.warn('GitHub自動追記通信エラー:', e);
+        ghSyncStatus = 'GitHub通信待機中';
+        updateStatusDisplay();
         return false;
       }
     }
 
-    // 1. ネットから収集した文章を構造化フォーマットで整形
+    function updateStatusDisplay() {
+      trainStatusEl.textContent = '✅ 総量: ' + memoryStore.corpusText.length.toLocaleString() + '文字（' + memoryStore.topics.length + 'テーマ）｜' + ghSyncStatus;
+    }
+
+    function openMemoryDB() {
+      return new Promise(function(resolve) {
+        if (!window.indexedDB) { resolve(null); return; }
+        var req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = function(e) {
+          var db = e.target.result;
+          if (!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE);
+        };
+        req.onsuccess = function(e) { resolve(e.target.result); };
+        req.onerror = function() { resolve(null); };
+      });
+    }
+
+    async function loadFromUnlimitedStorage() {
+      var db = await openMemoryDB();
+      if (db) {
+        var loaded = await new Promise(function(resolve) {
+          try {
+            var tx = db.transaction(DB_STORE, 'readonly');
+            var getReq = tx.objectStore(DB_STORE).get('main');
+            getReq.onsuccess = function() { resolve(getReq.result || null); };
+            getReq.onerror = function() { resolve(null); };
+          } catch (e) { resolve(null); }
+        });
+        if (loaded && loaded.corpusText) return loaded;
+      }
+      try {
+        var savedJson = localStorage.getItem(STORAGE_KEY);
+        if (savedJson) return JSON.parse(savedJson);
+      } catch (e) {}
+      return null;
+    }
+
+    async function saveToPermanentMemory() {
+      if (memoryStore.chatHistory.length > 20) {
+        memoryStore.chatHistory = memoryStore.chatHistory.slice(-20);
+      }
+      var db = await openMemoryDB();
+      if (db) {
+        try {
+          var tx = db.transaction(DB_STORE, 'readwrite');
+          tx.objectStore(DB_STORE).put(memoryStore, 'main');
+        } catch (e) {}
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryStore));
+      } catch (e) {}
+    }
+
+    // ==========================================
+    // 2. ネット自動収集（ランダム収集 ＋ 指定テーマ集中検索！）
+    // ==========================================
     async function fetchRandomWebArticles() {
       var randomUrl = 'https://ja.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=' + FETCH_ARTICLE_COUNT + '&prop=extracts&exintro&explaintext&format=json&origin=*';
       var res = await fetch(randomUrl);
@@ -502,10 +454,9 @@
       for (var i = 0; i < keys.length; i++) {
         var pId = keys[i];
         var title = pages[pId].title;
-        var extract = pages[pId].extract;
-        if (extract && extract.trim().length > 5) {
+        var cleanBody = cleanWikipediaText(pages[pId].extract);
+        if (cleanBody.length > 12) {
           titles.push(title);
-          var cleanBody = extract.replace(/\n+/g, '').trim();
           structuredBlocks.push('【テーマ：' + title + '】\n・' + title + '：' + cleanBody);
         }
       }
@@ -518,7 +469,41 @@
       return { text: collectedText.trim(), titles: titles };
     }
 
-    // 2. ハイブリッド・トランスフォーマー
+    // ★新機能：指定されたテーマをWikipediaから集中検索して取得する関数
+    async function fetchTopicFromWikipedia(topicQuery) {
+      var searchUrl = 'https://ja.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=' + encodeURIComponent(topicQuery) + '&gsrlimit=3&prop=extracts&exintro&explaintext&format=json&origin=*';
+      var res = await fetch(searchUrl);
+      var data = await res.json();
+      var pages = (data.query && data.query.pages) ? data.query.pages : {};
+      var keys = Object.keys(pages);
+
+      var structuredBlocks = [];
+      var titles = [];
+      var summaryForReply = '';
+
+      for (var i = 0; i < keys.length; i++) {
+        var pId = keys[i];
+        var title = pages[pId].title;
+        var cleanBody = cleanWikipediaText(pages[pId].extract);
+        if (cleanBody.length > 10) {
+          titles.push(title);
+          structuredBlocks.push('【テーマ：' + title + '】\n・' + title + '：' + cleanBody);
+          if (!summaryForReply) {
+            summaryForReply = cleanBody.split('。').slice(0, 2).join('。') + '。';
+          }
+        }
+      }
+
+      return {
+        text: structuredBlocks.join('\n\n').trim(),
+        titles: titles,
+        summaryForReply: summaryForReply
+      };
+    }
+
+    // ==========================================
+    // 3. ハイブリッド・トランスフォーマー
+    // ==========================================
     function SmartMiniTransformer(text) {
       this.rawText = text;
       var activeSample = text.slice(-40000);
@@ -682,14 +667,14 @@
         });
 
         var out = this.forward(inputIds);
-        var probs = this.softmax(out.logits, 0.55);
+        var probs = this.softmax(out.logits, 0.35);
 
         for (var len = 3; len >= 1; len--) {
           if (recentChars.length >= len) {
             var key = recentChars.slice(-len).join('');
             var candidates = this.ngramMap[key];
             if (candidates) {
-              var boostWeight = len * 4.5;
+              var boostWeight = len * 8.0;
               Object.keys(candidates).forEach(function(ch) {
                 var id = self.charToId[ch];
                 if (id !== undefined) {
@@ -714,21 +699,38 @@
         }
 
         var nextChar = this.idToChar[nextId];
-        if (nextChar === '\n' || nextChar === '【') break;
+        if (nextChar === '\n' || nextChar === '【' || nextChar === '】') break;
         currentText += nextChar;
 
-        if (i > 25 && nextChar === '。') {
+        if (i > 15 && nextChar === '。') {
           break;
         }
       }
       return currentText;
     };
 
-    // 3. 会話応答エンジン
+    // ==========================================
+    // 4. 自然な日本語会話応答エンジン（チグハグ解消！）
+    // ==========================================
     function generateConversationalReply(userInput) {
+      var trimmed = userInput.trim();
+
+      // ① 挨拶や短い相槌には自然なカフェ会話で返答（「ち」の1文字検索ミスを防止！）
+      if (/^(こんにちは|こんばんは|おはよう|やあ|ハロー|はじめまして)[！!。]?$/.test(trimmed)) {
+        var recent = memoryStore.topics.slice(-3).join('・') || 'いろんなテーマ';
+        return 'こんにちは！今日もカフェへようこそ☕ さっきまで【' + recent + '】について学んでいたよ！気になる言葉や、「〇〇について調べて学んで！」って気軽に話しかけてね！';
+      }
+      if (/^(はい？|え？|なに？|ん？|うん|はい)[？?！!。]?$/.test(trimmed)) {
+        return 'あっ、ごめんね！さっきはちょっと言葉がつながりすぎちゃったみたい☕ 例えば「宇宙について調べて学んで！」とか「コーヒーについて教えて」みたいに聞いてくれるとバッチリ答えられるよ！';
+      }
+      if (/ありがとう|すごい|いいね|賢い/.test(trimmed)) {
+        return 'わあ、ありがとう！そう言ってもらえるとすごく嬉しいな☕ これからもknowledge.txtにどんどん知識をためて賢くなるね！';
+      }
+
+      // ② 2文字以上の意味のあるキーワードで記憶から検索
       var text = memoryStore.corpusText;
-      var cleaned = userInput.replace(/[？?！!。、はがのをにへとでやもかなだよねについて教えて]/g, ' ');
-      var keywords = cleaned.split(/\s+/).filter(function(w) { return w.length >= 1; });
+      var cleaned = trimmed.replace(/[？?！!。、はがのをにへとでやもかなだよねについて教えてとは何]/g, ' ');
+      var keywords = cleaned.split(/\s+/).filter(function(w) { return w.length >= 2; });
 
       var matchedSentence = '';
       var matchedKeyword = '';
@@ -740,7 +742,9 @@
           var line = lines[l].trim();
           if (line.indexOf(kw) !== -1 && line.indexOf('【テーマ：') !== 0) {
             var colonIdx = line.indexOf('：');
-            matchedSentence = (colonIdx !== -1) ? line.slice(colonIdx + 1).trim() : line.replace(/^・/, '');
+            var rawFact = (colonIdx !== -1) ? line.slice(colonIdx + 1).trim() : line.replace(/^・/, '');
+            // 最初の2文を綺麗に抽出してチグハグを防止
+            matchedSentence = rawFact.split('。').slice(0, 2).join('。');
             matchedKeyword = kw;
             break;
           }
@@ -749,22 +753,17 @@
       }
 
       if (matchedSentence) {
-        var seed = matchedSentence.slice(0, 10);
-        var generatedBody = model.generateNatural(seed, GENERATE_LENGTH);
-        return '「' + matchedKeyword + '」についてですね！知識ファイル（' + text.length.toLocaleString() + '文字分）を調べたところ、' + generatedBody + (generatedBody.endsWith('。') ? '' : '。');
+        return '「' + matchedKeyword + '」についてですね！knowledge.txtの記憶を調べたところ、' + matchedSentence + (matchedSentence.endsWith('。') ? '' : '。');
       } else {
-        var contentLines = lines.filter(function(ln) { return ln.indexOf('・') === 0; });
-        var baseLine = contentLines.length > 0
-          ? contentLines[Math.floor(Math.random() * contentLines.length)].replace(/^・[^：]+：/, '')
-          : text.slice(0, 20);
-        var fallbackSeed = baseLine.slice(0, 8);
-        var generated = model.generateNatural(fallbackSeed, GENERATE_LENGTH);
-        var recentTopic = memoryStore.topics.slice(-2).join('・') || 'いろんな知識';
-        return 'なるほど、「' + userInput + '」ですね！最近学んだ【' + recentTopic + '】の知識からつなげると、' + generated + (generated.endsWith('。') ? '' : '。');
+        // まだ記憶にない言葉なら、その場でWikipedia検索して学ぶ提案も添える
+        var targetWord = keywords[0] || trimmed.replace(/[？?！!。]/g, '');
+        return '「' + targetWord + '」についてはまだ私の記憶（' + text.length.toLocaleString() + '文字）に載っていないみたい！もしよければ「' + targetWord + 'について調べて学んで！」って言ってくれたら、今すぐWikipediaから調べてknowledge.txtに追加するよ！';
       }
     }
 
-    // 4. 演出（手動コピーボタンは削除し閲覧専用に）
+    // ==========================================
+    // 5. 演出
+    // ==========================================
     function addMessageImmediate(text, sender) {
       var div = document.createElement('div');
       div.className = 'message ' + (sender === 'user' ? 'user-msg' : 'ai-msg');
@@ -808,46 +807,47 @@
       var previewText = memoryStore.corpusText.slice(-3000);
       var prefixNote = memoryStore.corpusText.length > 3000 ? '（※最新の3,000文字を抜粋表示中）\n\n' : '';
       knowledgePanel.innerHTML =
-        '<strong>🧠 無制限・自動増殖メモリ（総量: ' + memoryStore.corpusText.length.toLocaleString() + '文字｜テーマ数: ' +
+        '<strong>🧠 GitHub連動・自動増殖メモリ（総量: ' + memoryStore.corpusText.length.toLocaleString() + '文字｜テーマ数: ' +
         memoryStore.topics.length + '個）:</strong><br>' +
         '<span style="color:#8d6e63;font-size:0.75rem;">最近学んだテーマ: ' + (memoryStore.topics.slice(-10).join(' / ') || 'なし') + '</span><br><br>' +
         prefixNote + (previewText || 'まだ学習データがありません');
     }
 
-    // 5. 無制限メモリ保存 ＆ GitHub自動追記連携
-    function saveToPermanentMemory() {
-      try {
-        if (memoryStore.chatHistory.length > 20) {
-          memoryStore.chatHistory = memoryStore.chatHistory.slice(-20);
-        }
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryStore));
-      } catch (e) {
-        try {
-          var compactCache = {
-            topics: memoryStore.topics,
-            corpusText: memoryStore.corpusText.slice(-1500000),
-            chatHistory: memoryStore.chatHistory
-          };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(compactCache));
-        } catch (e2) {}
-      }
-    }
-
+    // ==========================================
+    // 6. GitHub knowledge.txt 読み込み ＆ 学習・自動追記パイプライン
+    // ==========================================
     async function fetchGitHubKnowledgeFile() {
       try {
-        var res = await fetch(GITHUB_KNOWLEDGE_FILE + '?t=' + Date.now());
+        var apiUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + GITHUB_TARGET_PATH + '?t=' + Date.now();
+        var res = await fetch(apiUrl, {
+          headers: {
+            'Authorization': 'Bearer ' + GITHUB_TOKEN,
+            'Accept': 'application/vnd.github+json'
+          }
+        });
         if (res.ok) {
-          var text = await res.text();
-          if (text && text.trim().length > 5) {
-            return text.trim();
+          var fileInfo = await res.json();
+          if (fileInfo.content) {
+            return base64ToUtf8(fileInfo.content).trim();
           }
         }
       } catch (e) {}
+
+      try {
+        var rawRes = await fetch(GITHUB_KNOWLEDGE_FILE + '?t=' + Date.now());
+        if (rawRes.ok) {
+          var text = await rawRes.text();
+          if (text && text.trim().length > 5) return text.trim();
+        }
+      } catch (e2) {}
       return '';
     }
 
-    function trainAndGrowMemory(newText, newTitles, announceMessage, isSilentBackground) {
-      if (isLearningNow) return;
+    function trainAndGrowMemory(newText, newTitles, announceMessage, isSilentBackground, onComplete) {
+      if (isLearningNow) {
+        if (onComplete) onComplete();
+        return;
+      }
       isLearningNow = true;
 
       var isAdded = false;
@@ -871,10 +871,7 @@
           model = nextModel;
           isLearningNow = false;
           progressBarEl.style.width = '100%';
-          
-          var cfg = loadGitHubConfig();
-          var ghStatusText = cfg.token ? '（GitHub自動追記ON）' : '（GitHub自動追記未設定）';
-          trainStatusEl.textContent = '✅ 無制限記憶アクティブ｜総量: ' + memoryStore.corpusText.length.toLocaleString() + '文字 ' + ghStatusText;
+          updateStatusDisplay();
           promptInput.disabled = false;
           generateBtn.disabled = false;
 
@@ -884,15 +881,18 @@
 
           saveToPermanentMemory();
 
-          // 新しい知識が追加されたら、自動でGitHubの knowledge.txt にも追記保存！
           if (isAdded && newText) {
-            syncToGitHubKnowledgeFile(newText, false);
+            ghSyncStatus = 'GitHubへ書き込み中...';
+            updateStatusDisplay();
+            syncToGitHubKnowledgeFile(newText);
           }
 
           if (announceMessage) {
             memoryStore.chatHistory.push({ sender: 'ai', text: announceMessage });
             saveToPermanentMemory();
-            addMessageWithTyping(announceMessage, 'ai');
+            addMessageWithTyping(announceMessage, 'ai', onComplete);
+          } else if (onComplete) {
+            onComplete();
           }
           return;
         }
@@ -906,7 +906,7 @@
         progressBarEl.style.width = percent + '%';
         trainStatusEl.textContent = isSilentBackground
           ? '🔄 裏側で新しい知識を自動吸収＆GitHub追記中... ' + percent + '%'
-          : '⚡ 無制限メモリへ超高速学習中... ' + percent + '%';
+          : '⚡ 大容量メモリへ超高速学習中... ' + percent + '%';
 
         setTimeout(fastTrainLoop, 5);
       }
@@ -923,21 +923,14 @@
       } catch (e) {}
     }
 
-    // 6. 起動時の完全自動パイプライン
     async function bootAI() {
       try {
-        var cfg = loadGitHubConfig();
-        // トークン未設定なら最初は設定パネルを開いて案内
-        if (!cfg.token) {
-          githubConfigPanel.style.display = 'block';
+        var loaded = await loadFromUnlimitedStorage();
+        if (loaded) {
+          memoryStore = loaded;
         }
 
-        var savedJson = localStorage.getItem(STORAGE_KEY);
-        if (savedJson) {
-          memoryStore = JSON.parse(savedJson);
-        }
-
-        trainStatusEl.textContent = '📂 GitHub知識ファイル（knowledge.txt）を読み込み中...';
+        trainStatusEl.textContent = '📂 GitHub（280054-netizen/tomoAI）の knowledge.txt を読み込み中...';
         var githubText = await fetchGitHubKnowledgeFile();
         if (githubText && memoryStore.corpusText.indexOf(githubText.slice(0, 25)) === -1) {
           var merged = githubText + (memoryStore.corpusText ? '\n\n' + memoryStore.corpusText : '');
@@ -958,11 +951,11 @@
 
         var isFirstEver = (!memoryStore.corpusText || memoryStore.corpusText.length <= CONTEXT_SIZE + 5);
         var greeting = isFirstEver
-          ? 'こんにちは！' + (githubText ? 'GitHubの「knowledge.txt」と、' : '') + 'インターネットから集めた【' + fetched.titles.join('・') + '】の知識を学習したよ！上の「🔑 GitHub自動保存設定」にトークンを入れておくと、私が学んだ知識を自動で knowledge.txt に書き込んでいくよ！'
+          ? 'こんにちは！GitHubの「knowledge.txt」と連携完了したよ！普通の会話はもちろん、「宇宙について調べて学んで！」みたいにテーマを指定してくれたらWikipediaから集中学習してknowledge.txtに保存するよ！'
           : null;
 
         if (!isFirstEver && memoryStore.chatHistory.length === 0) {
-          greeting = 'おかえりなさい！これまでの記憶（' + memoryStore.corpusText.length.toLocaleString() + '文字）に、新しく【' + fetched.titles.join('・') + '】の知識も自動追加したよ！';
+          greeting = 'おかえりなさい！これまでの記憶（' + memoryStore.corpusText.length.toLocaleString() + '文字）に新しい知識も追加したよ！気になるテーマがあれば「〇〇について調べて学んで！」って教えてね！';
         }
 
         trainAndGrowMemory(fetched.text, fetched.titles, greeting, false);
@@ -975,7 +968,10 @@
       }
     }
 
-    function handleGenerateClick() {
+    // ==========================================
+    // 7. チャット送信（「〇〇について調べて学んで！」の集中学習コマンドに対応！）
+    // ==========================================
+    async function handleGenerateClick() {
       if (!model) return;
       var prompt = promptInput.value.trim();
       if (!prompt) {
@@ -988,6 +984,39 @@
       promptInput.disabled = true;
       generateBtn.disabled = true;
 
+      // ★「〇〇について調べて」「〇〇を学んで」「〇〇を勉強して」のパターンを検出！
+      var learnMatch = prompt.match(/^(.+?)(?:について|を)?(?:調べて|学んで|勉強して|検索して|学習して)/);
+      if (learnMatch && learnMatch[1]) {
+        var targetTopic = learnMatch[1].trim();
+        trainStatusEl.textContent = '🔍 Wikipediaで「' + targetTopic + '」を集中検索中...';
+
+        try {
+          var topicData = await fetchTopicFromWikipedia(targetTopic);
+          if (topicData.text && topicData.titles.length > 0) {
+            var reportMsg = '「' + targetTopic + '」についてWikipediaから【' + topicData.titles.join('・') + '】の記事を見つけて集中学習したよ！knowledge.txtにも自動追記したからね☕\n\n学んだ内容：' + topicData.summaryForReply;
+            trainAndGrowMemory(topicData.text, topicData.titles, reportMsg, false, function() {
+              promptInput.disabled = false;
+              generateBtn.disabled = false;
+              promptInput.focus();
+            });
+            return;
+          } else {
+            var notFoundMsg = 'ごめんね、Wikipediaで「' + targetTopic + '」にぴったり合う記事が見つからなかったみたい。別の言葉でもう一度試してみてね！';
+            memoryStore.chatHistory.push({ sender: 'ai', text: notFoundMsg });
+            saveToPermanentMemory();
+            addMessageWithTyping(notFoundMsg, 'ai', function() {
+              promptInput.disabled = false;
+              generateBtn.disabled = false;
+              promptInput.focus();
+            });
+            return;
+          }
+        } catch (e) {
+          // 通信失敗時は通常応答へフォールバック
+        }
+      }
+
+      // 通常の会話・質問への返答
       var reply = generateConversationalReply(prompt);
       memoryStore.chatHistory.push({ sender: 'ai', text: reply });
       saveToPermanentMemory();
