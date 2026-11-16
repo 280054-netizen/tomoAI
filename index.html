@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>☕ カフェ・トランスフォーマーAI（テーマ指定学習＆GitHub自動追記）</title>
+  <title>☕ カフェ・トランスフォーマーAI（挨拶・文章作成・自動検索対応版）</title>
   <style>
     :root {
       --bg-cream: #fdf8f2;
@@ -267,7 +267,7 @@
 
   <header>
     <h1>☕ カフェ・トランスフォーマーAI</h1>
-    <div class="subtitle">「〇〇について調べて学んで！」で指定テーマも集中学習するAI</div>
+    <div class="subtitle">挨拶・文章作成・自動調査＆GitHub knowledge.txt 自動蓄積AI</div>
   </header>
 
   <div class="card">
@@ -276,7 +276,7 @@
         <span id="train-status">⏳ GitHubの knowledge.txt と記憶にアクセス中...</span>
         <div class="tool-buttons">
           <button type="button" class="mini-btn" onclick="toggleKnowledgePanel()">📖 蓄積された記憶を見る</button>
-          <button type="button" class="mini-btn github-sync-btn" onclick="toggleGitHubConfigPanel()">🔑 トークン更新</button>
+          <button type="button" class="mini-btn github-sync-btn" onclick="toggleGitHubConfigPanel()">🔑 トークン設定</button>
         </div>
       </div>
       <div class="progress-bar-bg">
@@ -284,12 +284,11 @@
       </div>
     </div>
 
-    <!-- トークンをGitHubに無効化されないようブラウザ内だけに安全保存する欄 -->
     <div id="github-config-panel">
       <strong>🔑 GitHub「knowledge.txt」自動追記用トークン設定（ブラウザ内に安全保存）</strong><br>
-      <span style="font-size:0.75rem; color:#555;">※コードに直書きするとGitHubの安全機能で自動無効化されるため、ここに貼り付けて保存してください（リポジトリ 280054-netizen/tomoAI は自動設定済みです）。</span>
+      <span style="font-size:0.75rem; color:#555;">※トークン（github_pat_...）をここに貼り付けて保存すると、GitHubに自動追記され続けます（280054-netizen/tomoAI）。</span>
       <input type="password" id="gh-token-input" class="config-input" placeholder="新しいトークン（github_pat_...）を貼り付け">
-      <button type="button" class="save-config-btn" onclick="saveNewGitHubToken()">💾 トークンを保存して自動追記を再開する</button>
+      <button type="button" class="save-config-btn" onclick="saveNewGitHubToken()">💾 トークンを保存して自動追記をオンにする</button>
       <span id="gh-badge" style="margin-left:8px; font-size:0.75rem; color:#27ae60;"></span>
     </div>
 
@@ -298,7 +297,7 @@
     <div id="chat-box"></div>
 
     <div class="input-group">
-      <textarea id="prompt-input" placeholder="質問や「宇宙について調べて学んで！」と入力してね..." disabled></textarea>
+      <textarea id="prompt-input" placeholder="挨拶や「宇宙について教えて」「コーヒーの文章を作って」と入力してね..." disabled></textarea>
       <button type="button" id="generate-btn" class="btn-send" onclick="handleGenerateClick()" disabled>送信</button>
     </div>
   </div>
@@ -315,7 +314,7 @@
     };
 
     // ==========================================
-    // GitHub自動連携設定（トークンはブラウザのlocalStorageから安全に読み込み）
+    // GitHub自動連携設定
     // ==========================================
     var GITHUB_OWNER = '280054-netizen';
     var GITHUB_REPO = 'tomoAI';
@@ -334,8 +333,7 @@
     var LEARNING_RATE = 0.06;
     var TOTAL_STEPS = 1200;
     var BATCH_PER_FRAME = 150;
-    var GENERATE_LENGTH = 70;
-    var TYPING_SPEED_MS = 22;
+    var TYPING_SPEED_MS = 20;
     var DB_NAME = 'CafeTransformerUnlimitedDB';
     var DB_STORE = 'memoryStore';
     var STORAGE_KEY = 'cafe_transformer_unlimited_memory_v3';
@@ -377,7 +375,7 @@
       var val = document.getElementById('gh-token-input').value.trim();
       if (!val) return;
       localStorage.setItem(TOKEN_STORAGE_KEY, val);
-      document.getElementById('gh-badge').textContent = '✅ 保存完了！自動追記を再開します...';
+      document.getElementById('gh-badge').textContent = '✅ 保存完了！自動追記を開始します...';
       githubConfigPanel.style.display = 'none';
       if (memoryStore.corpusText) {
         enqueueGitHubWrite(memoryStore.corpusText.slice(-2000));
@@ -386,14 +384,13 @@
 
     function cleanWikipediaText(rawText) {
       if (!rawText) return '';
-      var cleaned = rawText
+      return rawText
         .replace(/（[^（）]*）/g, '')
         .replace(/\([^()]*\)/g, '')
         .replace(/\[[^\]]*\]/g, '')
         .replace(/[「」『』【】()（）]/g, '')
         .replace(/\s+/g, '')
         .trim();
-      return cleaned;
     }
 
     function utf8ToBase64(str) {
@@ -609,7 +606,7 @@
           titles.push(title);
           structuredBlocks.push('【テーマ：' + title + '】\n・' + title + '：' + cleanBody);
           if (!summaryForReply) {
-            summaryForReply = cleanBody.split('。').slice(0, 2).join('。') + '。';
+            summaryForReply = cleanBody.split('。').slice(0, 3).join('。') + '。';
           }
         }
       }
@@ -641,17 +638,6 @@
       this.Wk = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wv = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wout = this.createMatrix(EMBED_DIM, this.vocabSize);
-
-      this.ngramMap = {};
-      var ngramSample = Array.from(text.slice(-100000));
-      for (var n = 2; n <= 4; n++) {
-        for (var i = 0; i <= ngramSample.length - n; i++) {
-          var prefix = ngramSample.slice(i, i + n - 1).join('');
-          var nextCh = ngramSample[i + n - 1];
-          if (!this.ngramMap[prefix]) this.ngramMap[prefix] = {};
-          this.ngramMap[prefix][nextCh] = (this.ngramMap[prefix][nextCh] || 0) + 1;
-        }
-      }
     }
 
     SmartMiniTransformer.prototype.createMatrix = function(rows, cols) {
@@ -667,10 +653,9 @@
       return mat;
     };
 
-    SmartMiniTransformer.prototype.softmax = function(arr, temp) {
-      if (temp === undefined) temp = 1.0;
+    SmartMiniTransformer.prototype.softmax = function(arr) {
       var maxVal = Math.max.apply(null, arr);
-      var exps = arr.map(function(v) { return Math.exp((v - maxVal) / temp); });
+      var exps = arr.map(function(v) { return Math.exp(v - maxVal); });
       var sum = exps.reduce(function(a, b) { return a + b; }, 0);
       return exps.map(function(e) { return e / sum; });
     };
@@ -773,49 +758,97 @@
       return loss;
     };
 
-    function generateConversationalReply(userInput) {
-      var trimmed = userInput.trim();
-
-      if (/^(こんにちは|こんばんは|おはよう|やあ|ハロー|はじめまして)[！!。]?$/.test(trimmed)) {
-        var recent = memoryStore.topics.slice(-3).join('・') || 'いろんなテーマ';
-        return 'こんにちは！今日もカフェへようこそ☕ さっきまで【' + recent + '】について学んでいたよ！気になる言葉や、「〇〇について調べて学んで！」って気軽に話しかけてね！';
-      }
-      if (/^(はい？|え？|なに？|ん？|うん|はい)[？?！!。]?$/.test(trimmed)) {
-        return 'あっ、ごめんね！さっきはちょっと言葉がつながりすぎちゃったみたい☕ 例えば「宇宙について調べて学んで！」とか「コーヒーについて教えて」みたいに聞いてくれるとバッチリ答えられるよ！';
-      }
-      if (/ありがとう|すごい|いいね|賢い/.test(trimmed)) {
-        return 'わあ、ありがとう！そう言ってもらえるとすごく嬉しいな☕ これからもknowledge.txtにどんどん知識をためて賢くなるね！';
-      }
-
-      var text = memoryStore.corpusText;
-      var cleaned = trimmed.replace(/[？?！!。、はがのをにへとでやもかなだよねについて教えてとは何]/g, ' ');
-      var keywords = cleaned.split(/\s+/).filter(function(w) { return w.length >= 2; });
-
-      var matchedSentence = '';
-      var matchedKeyword = '';
-
-      var lines = text.split('\n');
-      for (var k = 0; k < keywords.length; k++) {
-        var kw = keywords[k];
-        for (var l = lines.length - 1; l >= 0; l--) {
-          var line = lines[l].trim();
-          if (line.indexOf(kw) !== -1 && line.indexOf('【テーマ：') !== 0) {
-            var colonIdx = line.indexOf('：');
-            var rawFact = (colonIdx !== -1) ? line.slice(colonIdx + 1).trim() : line.replace(/^・/, '');
-            matchedSentence = rawFact.split('。').slice(0, 2).join('。');
-            matchedKeyword = kw;
-            break;
-          }
+    // ==========================================
+    // 記憶検索ヘルパー（knowledge.txt内から正確な解説文を探す）
+    // ==========================================
+    function searchFactInMemory(keyword) {
+      var lines = memoryStore.corpusText.split('\n');
+      for (var l = lines.length - 1; l >= 0; l--) {
+        var line = lines[l].trim();
+        if (line.indexOf(keyword) !== -1 && line.indexOf('【テーマ：') !== 0) {
+          var colonIdx = line.indexOf('：');
+          var rawFact = (colonIdx !== -1) ? line.slice(colonIdx + 1).trim() : line.replace(/^・/, '');
+          return rawFact.split('。').slice(0, 3).join('。') + '。';
         }
-        if (matchedSentence) break;
+      }
+      return '';
+    }
+
+    // ==========================================
+    // ★Gemini級スマート応答・文章作成・自動調査エンジン
+    // ==========================================
+    async function generateSmartGeminiReply(userInput) {
+      var trimmed = userInput.trim();
+      // カッコ書きの感情表現（例：「こんにちは（圧）」）を分離して判定しやすくする
+      var normalized = trimmed.replace(/[（(][^）)]*[）)]/g, '').replace(/[！!？?。、\s]/g, '');
+
+      // 1. 挨拶への完璧な対応（「こんにちは（圧）」などにも即座に反応！）
+      if (/^(こんにちは|こんにちわ|こんばんは|こんばんわ|おはよう|おはようございます|やあ|ハロー|はじめまして|よろしく|おっす|ちわ)/.test(normalized)) {
+        var recent = memoryStore.topics.slice(-3).join('・') || 'いろんな知識';
+        var pressureNote = (trimmed.indexOf('圧') !== -1) ? '（ビシッ！と背筋を伸ばしてご挨拶します！☕）\n' : '';
+        return pressureNote + 'こんにちは！カフェ・トランスフォーマーAIへようこそ☕\n今の記憶量は ' + memoryStore.corpusText.length.toLocaleString() + '文字（' + memoryStore.topics.length + 'テーマ）まで成長しているよ！\n「〇〇について教えて」と聞いてくれたら何でも調べて答えるし、「〇〇の文章を作って」と頼んでくれたら文章も作成するよ！';
       }
 
-      if (matchedSentence) {
-        return '「' + matchedKeyword + '」についてですね！knowledge.txtの記憶を調べたところ、' + matchedSentence + (matchedSentence.endsWith('。') ? '' : '。');
-      } else {
-        var targetWord = keywords[0] || trimmed.replace(/[？?！!。]/g, '');
-        return '「' + targetWord + '」についてはまだ私の記憶（' + text.length.toLocaleString() + '文字）に載っていないみたい！もしよければ「' + targetWord + 'について調べて学んで！」って言ってくれたら、今すぐWikipediaから調べてknowledge.txtに追加するよ！';
+      if (/^(ありがとう|ありがとうございます|サンキュー|助かった|すごい|賢い|いいね|最高)/.test(normalized)) {
+        return 'ありがとうございます！そう言っていただけると励みになります☕ これからもknowledge.txtに知識をためて、もっとお役に立てるように成長しますね！';
       }
+
+      if (/^(自己紹介|あなたは誰|君は誰|何ができる|機能)/.test(normalized)) {
+        return '私は「カフェ・トランスフォーマーAI」です☕\nできることは3つあります！\n1. ネットから自動で知識を集めてGitHubの knowledge.txt に永久記憶すること\n2. 質問されたテーマをその場でWikipediaから調べて分かりやすく解説すること\n3. 「〇〇の文章を作って」と頼まれたテーマで、紹介文や物語を作成すること\n何でも気軽に話しかけてくださいね！';
+      }
+
+      // 2. 文章作成モード（「〇〇の文章を作って」「〇〇について作文して」「〇〇の物語を書いて」など）
+      var writeMatch = trimmed.match(/^(.+?)(?:の|についての|に関する)?(?:文章|作文|紹介文|解説文|物語|ストーリー|スピーチ|まとめ)を?(?:作って|書いて|作成して|考えて|お願い)/);
+      if (writeMatch && writeMatch[1]) {
+        var writeTopic = writeMatch[1].trim();
+        var fact = searchFactInMemory(writeTopic);
+        if (!fact) {
+          try {
+            var fetchedTopic = await fetchTopicFromWikipedia(writeTopic);
+            if (fetchedTopic.text && fetchedTopic.titles.length > 0) {
+              fact = fetchedTopic.summaryForReply;
+              trainAndGrowMemory(fetchedTopic.text, fetchedTopic.titles, null, true);
+            }
+          } catch (e) {}
+        }
+
+        if (fact) {
+          return '【「' + writeTopic + '」についての紹介・解説文】\n\nみなさんは「' + writeTopic + '」についてご存知でしょうか。' + fact + 'このように、' + writeTopic + 'にはとても奥深い魅力や歴史があり、知れば知るほど新しい発見があります。ぜひこの機会に「' + writeTopic + '」の世界に触れてみてください。';
+        } else {
+          return '【「' + writeTopic + '」をテーマにした文章】\n\n静かなカフェの窓辺で温かいコーヒーを飲みながら、「' + writeTopic + '」について思いを巡らせてみました。新しい言葉やテーマに出会うたびに、世界が少しずつ広がっていくようなワクワク感がありますね。';
+        }
+      }
+
+      // 3. 質問・調査モード（「〇〇について調べて」「〇〇とは」「〇〇を教えて」など）
+      var queryClean = trimmed
+        .replace(/(?:について|を|とは|って)?(?:調べて|学んで|勉強して|検索して|学習して|教えて|解説して|何|なに|ですか|だよね)[？?！!。]*$/g, '')
+        .replace(/[？?！!。、]/g, ' ')
+        .trim();
+
+      var keywords = queryClean.split(/\s+/).filter(function(w) { return w.length >= 2; });
+      var targetKeyword = keywords[0] || normalized;
+
+      if (targetKeyword && targetKeyword.length >= 2) {
+        // まず自分の記憶（knowledge.txt）から探す
+        var existingFact = searchFactInMemory(targetKeyword);
+        if (existingFact) {
+          return '「' + targetKeyword + '」についてですね！knowledge.txtの記憶を調べたところ、次のことがわかりました☕\n\n' + existingFact;
+        }
+
+        // 記憶になければ、その場で自動的にWikipediaを検索して学習＆knowledge.txt追記＆回答！
+        trainStatusEl.textContent = '🔍 Wikipediaで「' + targetKeyword + '」を自動調査中...';
+        try {
+          var topicData = await fetchTopicFromWikipedia(targetKeyword);
+          if (topicData.text && topicData.titles.length > 0) {
+            trainAndGrowMemory(topicData.text, topicData.titles, null, true);
+            return '「' + targetKeyword + '」についてインターネット（Wikipedia）で調べて、knowledge.txtにも新しく記憶しました☕\n\n【調査結果：' + topicData.titles[0] + '】\n' + topicData.summaryForReply;
+          }
+        } catch (e) {}
+      }
+
+      // 4. その他の自由な雑談への自然な返答
+      var randomTopic = memoryStore.topics[memoryStore.topics.length - 1] || 'コーヒー';
+      return 'なるほど、「' + trimmed + '」ですね☕ もし詳しく知りたいテーマがあれば「' + (targetKeyword || randomTopic) + 'について教えて」、文章を作ってほしいときは「' + (targetKeyword || randomTopic) + 'の文章を作って」と話しかけてみてくださいね！';
     }
 
     function addMessageImmediate(text, sender) {
@@ -1011,7 +1044,7 @@
 
         var isFirstEver = (!memoryStore.corpusText || memoryStore.corpusText.length <= CONTEXT_SIZE + 5);
         var greeting = isFirstEver
-          ? 'こんにちは！新しい安全システムにアップデートしたよ☕ 「宇宙について調べて学んで！」みたいにテーマを指定してくれたらWikipediaから集中学習してknowledge.txtに保存するよ！'
+          ? 'こんにちは！挨拶・調査・文章作成ができる最新バージョンに進化したよ☕ 「こんにちは」「宇宙について教えて」「コーヒーの文章を作って」など何でも話しかけてね！'
           : null;
 
         trainAndGrowMemory(fetched.text, fetched.titles, greeting, false);
@@ -1028,7 +1061,7 @@
       if (!model) return;
       var prompt = promptInput.value.trim();
       if (!prompt) {
-        prompt = 'コーヒーについて教えて！';
+        prompt = 'こんにちは！';
       }
 
       addMessageImmediate(prompt, 'user');
@@ -1037,36 +1070,7 @@
       promptInput.disabled = true;
       generateBtn.disabled = true;
 
-      var learnMatch = prompt.match(/^(.+?)(?:について|を)?(?:調べて|学んで|勉強して|検索して|学習して)/);
-      if (learnMatch && learnMatch[1]) {
-        var targetTopic = learnMatch[1].trim();
-        trainStatusEl.textContent = '🔍 Wikipediaで「' + targetTopic + '」を集中検索中...';
-
-        try {
-          var topicData = await fetchTopicFromWikipedia(targetTopic);
-          if (topicData.text && topicData.titles.length > 0) {
-            var reportMsg = '「' + targetTopic + '」についてWikipediaから【' + topicData.titles.join('・') + '】の記事を見つけて集中学習したよ！knowledge.txtにも自動追記したからね☕\n\n学んだ内容：' + topicData.summaryForReply;
-            trainAndGrowMemory(topicData.text, topicData.titles, reportMsg, false, function() {
-              promptInput.disabled = false;
-              generateBtn.disabled = false;
-              promptInput.focus();
-            });
-            return;
-          } else {
-            var notFoundMsg = 'ごめんね、Wikipediaで「' + targetTopic + '」にぴったり合う記事が見つからなかったみたい。別の言葉でもう一度試してみてね！';
-            memoryStore.chatHistory.push({ sender: 'ai', text: notFoundMsg });
-            saveToPermanentMemory();
-            addMessageWithTyping(notFoundMsg, 'ai', function() {
-              promptInput.disabled = false;
-              generateBtn.disabled = false;
-              promptInput.focus();
-            });
-            return;
-          }
-        } catch (e) {}
-      }
-
-      var reply = generateConversationalReply(prompt);
+      var reply = await generateSmartGeminiReply(prompt);
       memoryStore.chatHistory.push({ sender: 'ai', text: reply });
       saveToPermanentMemory();
 
