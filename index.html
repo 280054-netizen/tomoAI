@@ -409,12 +409,12 @@
     // ★AI自身が自己診断・自己書き換えで調整するパラメータ領域
     // ==========================================
     /* SELF_TUNED_CONFIG_START */
-    var SELF_CODE_VERSION = 9;
+    var SELF_CODE_VERSION = 10;
     var TRANSFORMER_LAYERS = 8;
     var RECENT_BLOCK_WINDOW = 8;
-    var MAX_VOCAB_SIZE = 5000;
+    var MAX_VOCAB_SIZE = 5500;
     var LEARNING_RATE = 0.04;
-    var LAST_SELF_REPAIR_NOTE = '入力中・フォーカス中のエポック学習完全一時停止＆軽量バッチ間隔制御を追加';
+    var LAST_SELF_REPAIR_NOTE = '語彙上限を 5000 → 5500語へ自己拡張';
     /* SELF_TUNED_CONFIG_END */
 
     var FETCH_ARTICLE_COUNT = 3;
