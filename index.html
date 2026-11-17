@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>☕ カフェ・LLM（単語トークン・多層Transformer・長期記憶搭載版）</title>
+  <title>☕ カフェ・LLM（チャット特化3層Transformer・画像生成・自己進化版）</title>
   <!-- ブラウザのタブに表示されるオリジナル「カフェAI」ファビコン（SVG） -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23fdf8f2' stroke='%238d6e63' stroke-width='4'/%3E%3Cpath d='M22 16 Q20 12 22 8 M32 15 Q30 11 32 7 M42 16 Q40 12 42 8' stroke='%23e67e22' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M16 24 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z' fill='%238d6e63'/%3E%3Cpath d='M44 27 H49 C52 27 54 29 54 33.5 C54 37 52 39 49 39 H44' stroke='%238d6e63' stroke-width='4' fill='none'/%3E%3Ccircle cx='25" cy="35" r="2.5" fill="%23fff'/%3E%3Ccircle cx='35' cy='35' r='2.5' fill='%23fff'/%3E%3Cpath d='M27 41 Q30 44 33 41' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
   <style>
@@ -180,7 +180,7 @@
     }
 
     #chat-box {
-      height: 380px;
+      height: 390px;
       overflow-y: auto;
       background-color: #fffcf9;
       border: 2px solid var(--soft-border);
@@ -220,6 +220,7 @@
       line-height: 1.6;
       font-size: 0.95rem;
       white-space: pre-wrap;
+      word-break: break-word;
     }
 
     @keyframes popIn {
@@ -240,6 +241,33 @@
       background-color: #f3e5d8;
       color: var(--espresso-dark);
       border-bottom-left-radius: 4px;
+    }
+
+    .generated-art-wrap {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .generated-art-img {
+      max-width: 100%;
+      width: 300px;
+      border-radius: 12px;
+      border: 2px solid var(--latte-brown);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+    }
+
+    .art-download-btn {
+      background-color: var(--caramel-accent);
+      color: white;
+      text-decoration: none;
+      font-size: 0.78rem;
+      font-weight: bold;
+      padding: 5px 12px;
+      border-radius: 12px;
+      display: inline-block;
     }
 
     .typing-cursor::after {
@@ -315,15 +343,15 @@
       </svg>
       <h1>カフェ・LLM</h1>
     </div>
-    <div class="subtitle">単語トークナイザー・2層Transformer・RAG推論＆長期記憶LLM（280054-netizen/tomoAI）</div>
+    <div class="subtitle">チャット特化3層Transformer・AI画像生成・自己進化＆長期記憶LLM</div>
   </header>
 
   <div class="card">
     <div class="status-bar" id="status-container">
       <div class="status-top">
-        <span id="train-status">⏳ LLMの頭脳とGitHub knowledge.txt にアクセス中...</span>
+        <span id="train-status">⏳ 3層TransformerとGitHub knowledge.txt にアクセス中...</span>
         <div class="tool-buttons">
-          <button type="button" class="mini-btn" onclick="toggleKnowledgePanel()">🧠 LLM脳みそ＆記憶を見る</button>
+          <button type="button" class="mini-btn" onclick="toggleKnowledgePanel()">🧠 3層LLM脳みそ＆記憶</button>
           <button type="button" class="mini-btn github-sync-btn" onclick="toggleGitHubConfigPanel()">🔒 制作者設定</button>
         </div>
       </div>
@@ -345,7 +373,7 @@
     <div id="chat-box"></div>
 
     <div class="input-group">
-      <textarea id="prompt-input" placeholder="質問・比較（「宇宙と地球の違い」）・「私は〇〇と申します」など何でも話しかけてね..." disabled></textarea>
+      <textarea id="prompt-input" placeholder="普段のおしゃべり・「猫と宇宙の画像を作って」・「HTMLコードつくって」・質問（「〇〇とは？」）など何でもどうぞ..." disabled></textarea>
       <button type="button" id="generate-btn" class="btn-send" onclick="handleGenerateClick()" disabled>送信</button>
     </div>
   </div>
@@ -362,7 +390,7 @@
     };
 
     // ==========================================
-    // ★制作者パスワード設定（自由に変更できます）
+    // 制作者パスワード設定（自由に変更できます）
     // ==========================================
     var CREATOR_PASSWORD = 'tomo2026';
     var isCreatorUnlocked = false;
@@ -373,19 +401,22 @@
     var GITHUB_KNOWLEDGE_FILE = './knowledge.txt';
     var TOKEN_STORAGE_KEY = 'tomoai_safe_github_token_v2';
 
+    // ==========================================
+    // AI学習・3層LLMパラメータ
+    // ==========================================
     var FETCH_ARTICLE_COUNT = 3;
     var AUTO_LEARN_INTERVAL_MS = 25000;
     var MAX_MEMORY_CHARS = Infinity;
-    var MAX_VOCAB_SIZE = 1500;
-    var CONTEXT_SIZE = 6;
-    var EMBED_DIM = 24;
-    var LEARNING_RATE = 0.05;
-    var TOTAL_STEPS = 800;
+    var MAX_VOCAB_SIZE = 1800;
+    var CONTEXT_SIZE = 7;
+    var EMBED_DIM = 32;
+    var LEARNING_RATE = 0.045;
+    var TOTAL_STEPS = 900;
     var BATCH_PER_FRAME = 100;
-    var TYPING_SPEED_MS = 18;
-    var DB_NAME = 'CafeLLMFullEvolutionDB';
+    var TYPING_SPEED_MS = 16;
+    var DB_NAME = 'CafeUltraLLM3LayerDB';
     var DB_STORE = 'llmStateStore';
-    var STORAGE_KEY = 'cafe_llm_full_evolution_v1';
+    var STORAGE_KEY = 'cafe_ultra_llm_3layer_v1';
 
     var statusContainer = document.getElementById('status-container');
     var trainStatusEl = document.getElementById('train-status');
@@ -399,6 +430,7 @@
     var llmModel = null;
     var isLearningNow = false;
     var ghSyncStatus = '待機中';
+    var chatTurnCounter = 0;
 
     var memoryStore = {
       topics: [],
@@ -406,6 +438,7 @@
       chatHistory: [],
       lastDiscussedTopic: '',
       lastTopicOffset: 0,
+      evolutionCount: 0,
       userProfile: {
         name: '',
         likes: [],
@@ -434,9 +467,6 @@
       }
     }
 
-    // ==========================================
-    // 修正箇所1：制作者パスワード認証付き設定パネル開閉
-    // ==========================================
     function toggleGitHubConfigPanel() {
       if (githubConfigPanel.style.display === 'block') {
         githubConfigPanel.style.display = 'none';
@@ -543,7 +573,7 @@
 
           var updatedText = (currentRemoteText ? currentRemoteText.trim() + '\n\n' : '') + blockToWrite;
           var putBody = {
-            message: 'Auto-learn: 新しい知識をknowledge.txtに自動追記',
+            message: 'Auto-evolve: 3層Transformer知識＆会話進化ログを自動追記',
             content: utf8ToBase64(updatedText)
           };
           if (sha) putBody.sha = sha;
@@ -575,7 +605,7 @@
         githubWriteQueue.shift();
         ghSyncStatus = githubWriteQueue.length > 0
           ? 'GitHub追記中(残り' + githubWriteQueue.length + '件)...'
-          : 'GitHub自動追記成功✅';
+          : 'GitHub自己進化同期✅';
         updateStatusDisplay();
       } else {
         ghSyncStatus = 'GitHub再試行待機中(未送信' + githubWriteQueue.length + '件)';
@@ -591,7 +621,7 @@
 
     function updateStatusDisplay() {
       var vocabCount = llmModel ? llmModel.vocabSize : 0;
-      trainStatusEl.textContent = '🧠 語彙:' + vocabCount + '語 / 知識:' + memoryStore.corpusText.length.toLocaleString() + '文字（' + memoryStore.topics.length + 'テーマ）｜' + ghSyncStatus;
+      trainStatusEl.textContent = '🧠 3層LLM語彙:' + vocabCount + '語 / 進化:' + (memoryStore.evolutionCount || 0) + '回 / 知識:' + memoryStore.corpusText.length.toLocaleString() + '字｜' + ghSyncStatus;
     }
 
     function openMemoryDB() {
@@ -628,8 +658,8 @@
     }
 
     async function saveToPermanentMemory() {
-      if (memoryStore.chatHistory.length > 30) {
-        memoryStore.chatHistory = memoryStore.chatHistory.slice(-30);
+      if (memoryStore.chatHistory.length > 40) {
+        memoryStore.chatHistory = memoryStore.chatHistory.slice(-40);
       }
       if (llmModel) {
         memoryStore.savedWeights = llmModel.exportWeights();
@@ -654,8 +684,11 @@
       return matches ? matches : Array.from(text);
     }
 
-    function CafeDeepLLM(text, previousWeights) {
-      var sampleText = text.slice(-50000);
+    // ==========================================
+    // ★進化ポイント3：チャット特化型 3層Transformer + LayerNorm + FFN
+    // ==========================================
+    function CafeUltraTransformer(text, previousWeights) {
+      var sampleText = text.slice(-60000);
       var rawTokens = tokenizeJapanese(sampleText);
 
       var freqMap = {};
@@ -685,14 +718,26 @@
       this.tokenEmbed = this.createMatrix(this.vocabSize, EMBED_DIM);
       this.posEmbed = this.createMatrix(CONTEXT_SIZE, EMBED_DIM);
 
+      // Layer 1 Self-Attention
       this.Wq1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wk1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wv1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
 
+      // Layer 2 Self-Attention
       this.Wq2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wk2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wv2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
 
+      // Layer 3 Self-Attention（チャット文脈深層理解用）
+      this.Wq3 = this.createMatrix(EMBED_DIM, EMBED_DIM);
+      this.Wk3 = this.createMatrix(EMBED_DIM, EMBED_DIM);
+      this.Wv3 = this.createMatrix(EMBED_DIM, EMBED_DIM);
+
+      // Feed-Forward Network（思考変換層）
+      this.Wff1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
+      this.Wff2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
+
+      // Output Projection
       this.Wout = this.createMatrix(EMBED_DIM, this.vocabSize);
 
       if (previousWeights) {
@@ -700,7 +745,7 @@
       }
     }
 
-    CafeDeepLLM.prototype.createMatrix = function(rows, cols) {
+    CafeUltraTransformer.prototype.createMatrix = function(rows, cols) {
       var scale = Math.sqrt(2.0 / (rows + cols));
       var mat = [];
       for (var r = 0; r < rows; r++) {
@@ -713,22 +758,20 @@
       return mat;
     };
 
-    CafeDeepLLM.prototype.exportWeights = function() {
+    CafeUltraTransformer.prototype.exportWeights = function() {
       return {
         vocab: this.vocab,
         tokenEmbed: this.tokenEmbed,
         posEmbed: this.posEmbed,
-        Wq1: this.Wq1,
-        Wk1: this.Wk1,
-        Wv1: this.Wv1,
-        Wq2: this.Wq2,
-        Wk2: this.Wk2,
-        Wv2: this.Wv2,
+        Wq1: this.Wq1, Wk1: this.Wk1, Wv1: this.Wv1,
+        Wq2: this.Wq2, Wk2: this.Wk2, Wv2: this.Wv2,
+        Wq3: this.Wq3, Wk3: this.Wk3, Wv3: this.Wv3,
+        Wff1: this.Wff1, Wff2: this.Wff2,
         Wout: this.Wout
       };
     };
 
-    CafeDeepLLM.prototype.importWeights = function(saved) {
+    CafeUltraTransformer.prototype.importWeights = function(saved) {
       if (!saved || !saved.vocab) return;
       if (saved.posEmbed && saved.posEmbed.length === CONTEXT_SIZE) this.posEmbed = saved.posEmbed;
       if (saved.Wq1) this.Wq1 = saved.Wq1;
@@ -737,6 +780,11 @@
       if (saved.Wq2) this.Wq2 = saved.Wq2;
       if (saved.Wk2) this.Wk2 = saved.Wk2;
       if (saved.Wv2) this.Wv2 = saved.Wv2;
+      if (saved.Wq3) this.Wq3 = saved.Wq3;
+      if (saved.Wk3) this.Wk3 = saved.Wk3;
+      if (saved.Wv3) this.Wv3 = saved.Wv3;
+      if (saved.Wff1) this.Wff1 = saved.Wff1;
+      if (saved.Wff2) this.Wff2 = saved.Wff2;
 
       var oldMap = {};
       for (var i = 0; i < saved.vocab.length; i++) {
@@ -745,7 +793,7 @@
       for (var newId = 0; newId < this.vocab.length; newId++) {
         var tok = this.vocab[newId];
         var oldId = oldMap[tok];
-        if (oldId !== undefined && saved.tokenEmbed[oldId]) {
+        if (oldId !== undefined && saved.tokenEmbed[oldId] && saved.tokenEmbed[oldId].length === EMBED_DIM) {
           this.tokenEmbed[newId] = saved.tokenEmbed[oldId].slice();
           for (var d = 0; d < EMBED_DIM; d++) {
             if (saved.Wout[d] && saved.Wout[d][oldId] !== undefined) {
@@ -756,14 +804,21 @@
       }
     };
 
-    CafeDeepLLM.prototype.softmax = function(arr) {
+    CafeUltraTransformer.prototype.softmax = function(arr) {
       var maxVal = Math.max.apply(null, arr);
       var exps = arr.map(function(v) { return Math.exp(v - maxVal); });
       var sum = exps.reduce(function(a, b) { return a + b; }, 0);
       return exps.map(function(e) { return e / sum; });
     };
 
-    CafeDeepLLM.prototype.matMul = function(A, B) {
+    CafeUltraTransformer.prototype.layerNorm = function(vec) {
+      var mean = vec.reduce(function(a, b) { return a + b; }, 0) / vec.length;
+      var variance = vec.reduce(function(a, b) { return a + (b - mean) * (b - mean); }, 0) / vec.length;
+      var std = Math.sqrt(variance + 1e-5);
+      return vec.map(function(v) { return (v - mean) / std; });
+    };
+
+    CafeUltraTransformer.prototype.matMul = function(A, B) {
       var rowsA = A.length;
       var colsA = A[0].length;
       var colsB = B[0].length;
@@ -779,13 +834,14 @@
       return result;
     };
 
-    CafeDeepLLM.prototype.runSelfAttentionLayer = function(X, Wq, Wk, Wv) {
+    CafeUltraTransformer.prototype.runSelfAttentionLayer = function(X, Wq, Wk, Wv) {
       var seqLen = X.length;
       var Q = this.matMul(X, Wq);
       var K = this.matMul(X, Wk);
       var V = this.matMul(X, Wv);
       var scale = Math.sqrt(EMBED_DIM);
       var out = [];
+      var self = this;
 
       for (var i = 0; i < seqLen; i++) {
         var scores = [];
@@ -802,35 +858,49 @@
             vec[d2] += w * V[j2][d2];
           }
         }
-        out.push(vec.map(function(v, d) {
-          var sumVal = v + X[i][d];
-          return sumVal > 0 ? sumVal : sumVal * 0.1;
-        }));
+        // 残差接続 + LayerNorm
+        var residual = vec.map(function(v, d) { return v + X[i][d]; });
+        out.push(self.layerNorm(residual));
       }
       return out;
     };
 
-    CafeDeepLLM.prototype.forward = function(inputIds) {
+    CafeUltraTransformer.prototype.runFFN = function(X) {
+      var H = this.matMul(X, this.Wff1).map(function(row) {
+        return row.map(function(v) { return v > 0 ? v : v * 0.05; }); // LeakyReLU
+      });
+      var Out = this.matMul(H, this.Wff2);
+      var self = this;
+      return Out.map(function(row, i) {
+        var res = row.map(function(v, d) { return v + X[i][d]; });
+        return self.layerNorm(res);
+      });
+    };
+
+    CafeUltraTransformer.prototype.forward = function(inputIds) {
       var seqLen = inputIds.length;
       var self = this;
       var X0 = inputIds.map(function(id, pos) {
         return self.tokenEmbed[id].map(function(val, d) { return val + self.posEmbed[pos][d]; });
       });
 
+      // 3層 Transformer + FFN 順伝播
       var H1 = this.runSelfAttentionLayer(X0, this.Wq1, this.Wk1, this.Wv1);
       var H2 = this.runSelfAttentionLayer(H1, this.Wq2, this.Wk2, this.Wv2);
+      var H3 = this.runSelfAttentionLayer(H2, this.Wq3, this.Wk3, this.Wv3);
+      var Hff = this.runFFN(H3);
 
-      var lastHidden = H2[seqLen - 1];
+      var lastHidden = Hff[seqLen - 1];
       var logits = new Array(this.vocabSize).fill(0);
       for (var v = 0; v < this.vocabSize; v++) {
         for (var d3 = 0; d3 < EMBED_DIM; d3++) {
           logits[v] += lastHidden[d3] * this.Wout[d3][v];
         }
       }
-      return { logits: logits, lastHidden: lastHidden, H1: H1, X0: X0, seqLen: seqLen };
+      return { logits: logits, lastHidden: lastHidden, H3: H3, H2: H2, H1: H1, X0: X0, seqLen: seqLen };
     };
 
-    CafeDeepLLM.prototype.trainStep = function() {
+    CafeUltraTransformer.prototype.trainStep = function() {
       if (this.data.length <= CONTEXT_SIZE + 1) return 0;
       var startIdx = Math.floor(Math.random() * (this.data.length - CONTEXT_SIZE));
       var inputIds = this.data.slice(startIdx, startIdx + CONTEXT_SIZE);
@@ -859,19 +929,25 @@
         this.posEmbed[lastPos][d2] -= LEARNING_RATE * grad;
 
         for (var d3 = 0; d3 < EMBED_DIM; d3++) {
-          this.Wv2[d3][d2] -= LEARNING_RATE * 0.4 * cache.H1[lastPos][d3] * grad;
-          this.Wq2[d3][d2] -= LEARNING_RATE * 0.2 * cache.H1[lastPos][d3] * grad;
-          this.Wk2[d3][d2] -= LEARNING_RATE * 0.2 * cache.H1[lastPos][d3] * grad;
-          this.Wv1[d3][d2] -= LEARNING_RATE * 0.25 * cache.X0[lastPos][d3] * grad;
-          this.Wq1[d3][d2] -= LEARNING_RATE * 0.1 * cache.X0[lastPos][d3] * grad;
-          this.Wk1[d3][d2] -= LEARNING_RATE * 0.1 * cache.X0[lastPos][d3] * grad;
+          // FFN 重み更新
+          this.Wff2[d3][d2] -= LEARNING_RATE * 0.35 * cache.H3[lastPos][d3] * grad;
+          this.Wff1[d3][d2] -= LEARNING_RATE * 0.25 * cache.H3[lastPos][d3] * grad;
+          // Layer 3 重み更新
+          this.Wv3[d3][d2] -= LEARNING_RATE * 0.3 * cache.H2[lastPos][d3] * grad;
+          this.Wq3[d3][d2] -= LEARNING_RATE * 0.15 * cache.H2[lastPos][d3] * grad;
+          this.Wk3[d3][d2] -= LEARNING_RATE * 0.15 * cache.H2[lastPos][d3] * grad;
+          // Layer 2 重み更新
+          this.Wv2[d3][d2] -= LEARNING_RATE * 0.2 * cache.H1[lastPos][d3] * grad;
+          // Layer 1 重み更新
+          this.Wv1[d3][d2] -= LEARNING_RATE * 0.15 * cache.X0[lastPos][d3] * grad;
         }
       }
       return loss;
     };
 
-    CafeDeepLLM.prototype.generateTokenContinuation = function(seedText, maxTokens) {
-      if (!maxTokens) maxTokens = 16;
+    // チャット用：3層Transformerによる文脈生成エンジン
+    CafeUltraTransformer.prototype.generateChatResponse = function(seedText, maxTokens) {
+      if (!maxTokens) maxTokens = 18;
       var tokens = tokenizeJapanese(seedText);
       var self = this;
       var ids = tokens.map(function(t) { return self.tokenToId[t] !== undefined ? self.tokenToId[t] : 0; });
@@ -882,7 +958,10 @@
         var ctx = ids.slice(-CONTEXT_SIZE);
         var res = this.forward(ctx);
         var scaledLogits = res.logits.map(function(l, idx) {
-          return idx === 0 ? -1e9 : l / 0.75;
+          // 記号や<UNK>の連続を抑制しつつ自然な単語を選ぶ
+          var tok = self.idToToken[idx];
+          if (idx === 0 || tok === '\n') return -1e9;
+          return l / 0.72;
         });
         var probs = this.softmax(scaledLogits);
         var r = Math.random();
@@ -898,10 +977,186 @@
         ids.push(chosen);
         var word = this.idToToken[chosen];
         generated.push(word);
-        if (word === '。' && generated.length >= 6) break;
+        if ((word === '。' || word === '！') && generated.length >= 6) break;
       }
       return generated.join('');
     };
+
+    // ==========================================
+    // ★進化ポイント4：AI画像生成エンジン（Canvasイラスト描画）
+    // ==========================================
+    function generateAIArtworkDataURL(promptText) {
+      var canvas = document.createElement('canvas');
+      canvas.width = 480;
+      canvas.height = 320;
+      var ctx = canvas.getContext('2d');
+
+      var isNight = /夜|宇宙|星|月|銀河|ブラックホール|暗/.test(promptText);
+      var isSunset = /夕焼け|夕方|サンセット|オレンジ|秋/.test(promptText);
+      var isSea = /海|波|ビーチ|魚|水|空/.test(promptText);
+      var isCafe = /カフェ|コーヒー|喫茶|ケーキ|パン|ラテ/.test(promptText);
+      var isCat = /猫|ねこ|ネコ|動物|かわいい/.test(promptText);
+      var isMountain = /山|森|自然|木|花|桜/.test(promptText);
+
+      // 1. 背景グラデーション（空・空間）
+      var bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      if (isNight) {
+        bgGrad.addColorStop(0, '#0b1026');
+        bgGrad.addColorStop(0.6, '#1b2749');
+        bgGrad.addColorStop(1, '#2c3e50');
+      } else if (isSunset) {
+        bgGrad.addColorStop(0, '#ff5e62');
+        bgGrad.addColorStop(0.5, '#ff9966');
+        bgGrad.addColorStop(1, '#4a2545');
+      } else if (isCafe) {
+        bgGrad.addColorStop(0, '#f5e6d3');
+        bgGrad.addColorStop(1, '#d7ccc8');
+      } else {
+        bgGrad.addColorStop(0, '#4facfe');
+        bgGrad.addColorStop(0.7, '#a1c4fd');
+        bgGrad.addColorStop(1, '#fdf8f2');
+      }
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // 2. 星・太陽・月・惑星
+      if (isNight) {
+        for (var s = 0; s < 65; s++) {
+          ctx.fillStyle = 'rgba(255,255,255,' + (0.4 + Math.random() * 0.6) + ')';
+          ctx.beginPath();
+          ctx.arc(Math.random() * canvas.width, Math.random() * 210, 0.8 + Math.random() * 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // 三日月または惑星
+        ctx.fillStyle = '#ffeaa7';
+        ctx.beginPath();
+        ctx.arc(380, 75, 28, 0, Math.PI * 2);
+        ctx.fill();
+        if (/宇宙|惑星|土星/.test(promptText)) {
+          ctx.strokeStyle = 'rgba(255, 234, 167, 0.75)';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.ellipse(380, 75, 52, 12, -0.3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      } else if (!isCafe) {
+        ctx.fillStyle = isSunset ? '#ffeaa7' : '#fff7d6';
+        ctx.beginPath();
+        ctx.arc(390, 70, 32, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 3. 地形（海・山・カフェテーブル）
+      if (isSea) {
+        var seaGrad = ctx.createLinearGradient(0, 190, 0, 320);
+        seaGrad.addColorStop(0, isSunset ? '#c0392b' : '#0984e3');
+        seaGrad.addColorStop(1, '#0652DD');
+        ctx.fillStyle = seaGrad;
+        ctx.fillRect(0, 195, canvas.width, 125);
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = 2;
+        for (var w = 0; w < 6; w++) {
+          ctx.beginPath();
+          ctx.moveTo(40 + w * 60, 215 + w * 16);
+          ctx.lineTo(130 + w * 60, 215 + w * 16);
+          ctx.stroke();
+        }
+      } else if (isMountain || (!isCafe && !isCat)) {
+        ctx.fillStyle = isNight ? '#1e272e' : '#6ab04c';
+        ctx.beginPath();
+        ctx.moveTo(0, 260);
+        ctx.lineTo(140, 145);
+        ctx.lineTo(280, 260);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = isNight ? '#2f3640' : '#badc58';
+        ctx.beginPath();
+        ctx.moveTo(180, 265);
+        ctx.lineTo(340, 130);
+        ctx.lineTo(480, 265);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = isNight ? '#192a56' : '#2ecc71';
+        ctx.fillRect(0, 250, canvas.width, 70);
+      }
+
+      // 4. カフェのコーヒーカップ描画
+      if (isCafe || (!isSea && !isMountain && !isCat)) {
+        ctx.fillStyle = '#8d6e63';
+        ctx.fillRect(0, 240, canvas.width, 80);
+        // ソーサー
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(240, 245, 78, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // カップ本体
+        ctx.fillStyle = '#fdf8f2';
+        ctx.beginPath();
+        ctx.moveTo(185, 175);
+        ctx.lineTo(295, 175);
+        ctx.quadraticCurveTo(290, 245, 240, 245);
+        ctx.quadraticCurveTo(190, 245, 185, 175);
+        ctx.fill();
+        // コーヒー液面
+        ctx.fillStyle = '#6f4e37';
+        ctx.beginPath();
+        ctx.ellipse(240, 175, 55, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // 湯気
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = 3;
+        for (var st = -1; st <= 1; st++) {
+          ctx.beginPath();
+          ctx.moveTo(240 + st * 22, 155);
+          ctx.quadraticCurveTo(232 + st * 22, 135, 244 + st * 22, 115);
+          ctx.stroke();
+        }
+      }
+
+      // 5. かわいい猫キャラクター描画
+      if (isCat) {
+        var cx = isCafe ? 355 : 240;
+        var cy = isCafe ? 205 : 210;
+        // 耳
+        ctx.fillStyle = '#4e342e';
+        ctx.beginPath();
+        ctx.moveTo(cx - 34, cy - 15);
+        ctx.lineTo(cx - 24, cy - 52);
+        ctx.lineTo(cx - 6, cy - 28);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(cx + 34, cy - 15);
+        ctx.lineTo(cx + 24, cy - 52);
+        ctx.lineTo(cx + 6, cy - 28);
+        ctx.fill();
+        // 顔
+        ctx.beginPath();
+        ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+        ctx.fill();
+        // 目
+        ctx.fillStyle = '#ffeaa7';
+        ctx.beginPath();
+        ctx.arc(cx - 13, cy - 5, 5.5, 0, Math.PI * 2);
+        ctx.arc(cx + 13, cy - 5, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        // 鼻と口
+        ctx.fillStyle = '#ff7675';
+        ctx.beginPath();
+        ctx.arc(cx, cy + 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 6. 右下にカフェ・LLMアート署名
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.fillRect(10, canvas.height - 28, 220, 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('☕ Cafe-LLM Art: ' + promptText.slice(0, 14), 16, canvas.height - 14);
+
+      return canvas.toDataURL('image/png');
+    }
 
     async function fetchRandomWebArticles() {
       var randomUrl = 'https://ja.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=' + FETCH_ARTICLE_COUNT + '&prop=extracts&exintro&explaintext&format=json&origin=*';
@@ -930,9 +1185,6 @@
       return { text: collectedText.trim(), titles: titles };
     }
 
-    // ==========================================
-    // 修正箇所3：Wikipediaの正式記事タイトルを最優先で正確に取得
-    // ==========================================
     async function fetchTopicFromWikipedia(topicQuery) {
       var exactUrl = 'https://ja.wikipedia.org/w/api.php?action=query&titles=' + encodeURIComponent(topicQuery) + '&redirects=1&prop=extracts&exintro&explaintext&format=json&origin=*';
       var res = await fetch(exactUrl);
@@ -981,9 +1233,6 @@
       };
     }
 
-    // ==========================================
-    // 修正箇所2：テーマ名が完全一致する本物の記事だけを優先ヒットさせる
-    // ==========================================
     function searchMultiFactsInMemory(keywords, sentenceOffset, requireExactTopic) {
       if (sentenceOffset === undefined) sentenceOffset = 0;
       var lines = memoryStore.corpusText.split('\n');
@@ -1032,7 +1281,7 @@
       }
       if (nameMatch && nameMatch[1]) {
         memoryStore.userProfile.name = nameMatch[1];
-        return 'はじめまして、' + memoryStore.userProfile.name + 'さん！お名前を長期メモリにしっかり刻みました☕ これからもよろしくお願いします！';
+        return 'はじめまして、' + memoryStore.userProfile.name + 'さん！お名前を長期メモリにしっかり刻みました☕ これからもゆっくりおしゃべりしましょう！';
       }
 
       var likeMatch = trimmedInput.match(/(?:私|僕|俺|わたし|ぼく|おれ)は([^\s。！!？?、]+)が(?:好き|大好き|趣味)/);
@@ -1046,6 +1295,88 @@
       return '';
     }
 
+    function generateRequestedCodeSnippet(trimmedInput, userNamePrefix) {
+      var lower = trimmedInput.toLowerCase();
+
+      if (lower.indexOf('python') !== -1 || lower.indexOf('パイソン') !== -1) {
+        return userNamePrefix + 'Pythonのサンプルコードを作成しました☕ そのままコピーして使えます！\n\n' +
+          '```python\n' +
+          '# カフェ・LLMが作成したPythonサンプル\n' +
+          'def greet(name):\n' +
+          '    return f"こんにちは、{name}さん！☕"\n\n' +
+          'print(greet("ともとも2"))\n' +
+          '```';
+      }
+
+      if (lower.indexOf('javascript') !== -1 || lower.indexOf('js') !== -1) {
+        return userNamePrefix + 'JavaScriptのサンプルコードを作成しました☕ そのままコピーして使えます！\n\n' +
+          '```javascript\n' +
+          '// カフェ・LLMが作成したJavaScriptサンプル\n' +
+          'function sayHello(name) {\n' +
+          '  alert("こんにちは、" + name + "さん！☕");\n' +
+          '}\n' +
+          'sayHello("ともとも2");\n' +
+          '```';
+      }
+
+      if (lower.indexOf('css') !== -1) {
+        return userNamePrefix + 'おしゃれなカフェ風ボタンのCSSコードを作成しました☕\n\n' +
+          '```css\n' +
+          '.cafe-btn {\n' +
+          '  background-color: #8d6e63;\n' +
+          '  color: #ffffff;\n' +
+          '  padding: 12px 24px;\n' +
+          '  border: none;\n' +
+          '  border-radius: 20px;\n' +
+          '  font-size: 16px;\n' +
+          '  cursor: pointer;\n' +
+          '}\n' +
+          '```';
+      }
+
+      var pageTitle = (memoryStore.userProfile && memoryStore.userProfile.name)
+        ? memoryStore.userProfile.name + 'のWebページ'
+        : 'カフェ・LLMが作ったWebページ';
+
+      return userNamePrefix + 'HTMLの完成コードを作成しました☕ そのままコピーして「index.html」として保存するとブラウザで動きます！\n\n' +
+        '```html\n' +
+        '<!DOCTYPE html>\n' +
+        '<html lang="ja">\n' +
+        '<head>\n' +
+        '  <meta charset="UTF-8">\n' +
+        '  <title>' + pageTitle + '</title>\n' +
+        '</head>\n' +
+        '<body style="font-family:sans-serif; text-align:center; padding:40px; background:#fdf8f2;">\n' +
+        '  <h1>☕ ' + pageTitle + '</h1>\n' +
+        '  <p id="msg">ボタンを押してみてね！</p>\n' +
+        '  <button onclick="document.getElementById(\'msg\').textContent=\'クリック成功！🎉\'">ここをクリック</button>\n' +
+        '</body>\n' +
+        '</html>\n' +
+        '```';
+    }
+
+    // ==========================================
+    // ★進化ポイント2：会話から自己進化する仕組み（GitHub権限活用）
+    // ==========================================
+    function selfEvolveFromChat(userMsg, aiReply) {
+      chatTurnCounter++;
+      memoryStore.evolutionCount = (memoryStore.evolutionCount || 0) + 1;
+
+      // 3ターンごとに会話表現・語彙を自己進化ログとしてknowledge.txtと3層Transformerに統合
+      if (chatTurnCounter % 3 === 0) {
+        var cleanUser = userMsg.replace(/\s+/g, '');
+        var cleanAi = aiReply.replace(/```[\s\S]*?```/g, '').replace(/\s+/g, '').slice(0, 60);
+        if (cleanUser.length >= 2 && cleanAi.length >= 5) {
+          var evolveEntry = '【自己進化ログ：対話学習#' + memoryStore.evolutionCount + '】\n・対話表現：' + cleanUser + 'に対して' + cleanAi + 'と応答する。';
+          trainAndGrowMemory(evolveEntry, [], null, true);
+        }
+      }
+      updateStatusDisplay();
+    }
+
+    // ==========================================
+    // ★進化ポイント1：チャット最優先・統合応答エンジン
+    // ==========================================
     async function generateFullLLMReply(userInput) {
       var trimmed = userInput.trim();
       var normalized = trimmed.replace(/[（(][^）)]*[）)]/g, '').replace(/[！!？?。、\s]/g, '');
@@ -1053,53 +1384,82 @@
         ? memoryStore.userProfile.name + 'さん、'
         : '';
 
+      // 0. ユーザー情報の長期記憶学習
       var learnedUserNote = extractAndSaveUserMemory(trimmed);
       if (learnedUserNote) {
         saveToPermanentMemory();
-        return learnedUserNote;
+        return { text: learnedUserNote, imageUrl: null };
       }
 
+      // 1. ★AI画像生成リクエスト（「〇〇の画像を作って」「〇〇の絵を描いて」等）
+      if (/(?:画像|イラスト|絵|アート|写真|アイコン).*(?:つくって|作って|描いて|書いて|生成|お願い)/i.test(trimmed) ||
+          /(?:つくって|作って|描いて|書いて|生成).*(?:画像|イラスト|絵|アート)/i.test(trimmed)) {
+        var artTheme = trimmed
+          .replace(/(?:の|についての)?(?:画像|イラスト|絵|アート|写真)を?(?:つくって|作って|描いて|書いて|生成して|お願い)[！!。]*/g, '')
+          .trim() || 'カフェと星空';
+        var imgDataUrl = generateAIArtworkDataURL(artTheme);
+        return {
+          text: userNamePrefix + '「' + artTheme + '」をイメージしてオリジナルイラストを描き上げました☕🎨 下のボタンからPNG画像として保存もできますよ！',
+          imageUrl: imgDataUrl,
+          imageTitle: artTheme
+        };
+      }
+
+      // 2. ★コード生成リクエスト
+      if (/(?:html|css|javascript|js|python|コード|プログラム|ソース).*(?:つくって|作って|書いて|作成|生成|お願い)/i.test(trimmed) ||
+          /(?:つくって|作って|書いて|作成|生成).*(?:html|css|javascript|js|python|コード|プログラム)/i.test(trimmed)) {
+        return { text: generateRequestedCodeSnippet(trimmed, userNamePrefix), imageUrl: null };
+      }
+
+      // 3. 挨拶へのチャット応答
       if (/^(こんにちは|こんにちわ|こんばんは|こんばんわ|おはよう|おはようございます|やあ|ハロー|はじめまして|よろしく|おっす|ちわ)/.test(normalized)) {
         var pressureNote = (trimmed.indexOf('圧') !== -1) ? '（ビシッ！と背筋を伸ばしてご挨拶します！☕）\n' : '';
         var vocabCount = llmModel ? llmModel.vocabSize : 0;
-        var likeHint = (memoryStore.userProfile && memoryStore.userProfile.likes.length > 0)
-          ? 'そういえば「' + memoryStore.userProfile.likes[0] + '」がお好きでしたよね！'
-          : 'どんなテーマでも調べて比較・推論できるよ！';
-        return pressureNote + userNamePrefix + 'こんにちは！単語トークナイザー＆2層Transformer搭載の「カフェ・LLM」へようこそ☕\n現在 ' + vocabCount + '語の単語辞書と ' + memoryStore.corpusText.length.toLocaleString() + '文字の知識を保持しています。' + likeHint;
+        return {
+          text: pressureNote + userNamePrefix + 'こんにちは！チャット特化3層Transformer＆画像生成搭載の「カフェ・LLM」へようこそ☕\n現在 ' + vocabCount + '語の語彙と ' + (memoryStore.evolutionCount || 0) + '回の自己進化を重ねているよ！今日はどんなおしゃべりをしようか？',
+          imageUrl: null
+        };
       }
 
+      // 4. ユーザー記憶確認
       if (/名前|好み|好きなもの|覚えてる/.test(normalized) && /私|僕|俺|わたし|ぼく|おれ/.test(normalized)) {
         var uName = memoryStore.userProfile.name || 'まだ聞いていないみたい';
         var uLikes = memoryStore.userProfile.likes.length > 0 ? memoryStore.userProfile.likes.join('・') : 'まだ登録なし';
-        return 'もちろん長期メモリに覚えていますよ☕\n・お名前：' + uName + '\n・好きなもの：' + uLikes + '\n（「私は〇〇と申します」「〇〇が好き」と教えてくれたらいつでも更新するよ！）';
+        return {
+          text: 'もちろん長期メモリに覚えていますよ☕\n・お名前：' + uName + '\n・好きなもの：' + uLikes,
+          imageUrl: null
+        };
       }
 
+      // 5. 感情・ねぎらい・日常会話
       if (/^(ありがとう|ありがとうございます|サンキュー|助かった|すごい|賢い|いいね|最高|なるほど|へー|そうなんだ|面白い|おもしろい)/.test(normalized)) {
-        if (memoryStore.lastDiscussedTopic) {
-          return userNamePrefix + 'そう言ってもらえると嬉しいです☕ さっきの「' + memoryStore.lastDiscussedTopic + '」について、さらに詳しく掘り下げたり、別のテーマと比較したりもできますよ！';
-        }
-        return userNamePrefix + 'ありがとうございます！そう言っていただけるとLLMとしての学習意欲がどんどん湧いてきます☕';
+        return {
+          text: userNamePrefix + 'そう言ってもらえると嬉しいです☕ 会話を重ねるほど私の3層Transformerも少しずつ自己進化していくから、どんどん話しかけてね！',
+          imageUrl: null
+        };
       }
 
       if (/疲れた|ねむい|眠い|お腹すいた|おなかすいた|暇|ひま|元気|調子はどう|どう思う|おすすめ/.test(normalized)) {
         if (/疲れた|ねむい|眠い/.test(normalized)) {
-          return userNamePrefix + 'お疲れさまです☕ そういうときは温かいコーヒーでも飲んで一息つきましょう！気分転換に何か面白い雑学でも調べてお話ししましょうか？';
+          return { text: userNamePrefix + 'お疲れさまです☕ そういうときは温かいコーヒーでも飲んで一息つきましょう！リラックスできる「夕焼けの海の画像を作って」みたいに頼んでくれたら絵も描きますよ！', imageUrl: null };
         }
         if (/お腹すいた|おなかすいた/.test(normalized)) {
-          return userNamePrefix + 'お腹がすくとエネルギーが出ませんよね☕ カフェの焼きたてパンケーキが恋しくなる時間です！好きな食べ物の歴史でも調べてみましょうか？';
+          return { text: userNamePrefix + 'お腹がすくとエネルギーが出ませんよね☕ 焼きたてのパンケーキとカフェラテをご用意したい気分です！', imageUrl: null };
         }
         if (/暇|ひま|おすすめ/.test(normalized)) {
-          var fav = (memoryStore.userProfile.likes && memoryStore.userProfile.likes[0]) || memoryStore.topics[Math.floor(Math.random() * memoryStore.topics.length)] || '宇宙';
-          return userNamePrefix + 'そんなときは知識の探検に出ましょう☕ 「' + fav + 'について教えて」や「宇宙と地球の違い」みたいに聞いてくれたら、LLMが複数の知識を組み合わせて解説するよ！';
+          return { text: userNamePrefix + 'それなら「猫とカフェの画像を作って」でイラストを描いたり、ちょっとした雑談をしたりしましょう☕ 何か調べたいことができたときは「〇〇とは？」と聞いてね！', imageUrl: null };
         }
-        return userNamePrefix + '私は今日も2層Transformerを回転させて絶好調です☕ 今日はどんなテーマを調査・推論しましょうか？';
+        return { text: userNamePrefix + '私は3層Transformer＋FFNを回転させて絶好調です☕ あなたとのおしゃべりが一番のエネルギー源だよ！', imageUrl: null };
       }
 
       if (/^(自己紹介|あなたは誰|君は誰|何ができる|機能)/.test(normalized)) {
-        return '私は全方向進化型「カフェ・LLM」です☕\n1. 【単語トークン＆2層Transformer】文字ではなく単語単位で文脈を学習し、脳みそ（重み）を永久保存します\n2. 【横断RAG推論】「AとBの違い」「〇〇と△△の共通点」のように複数テーマを比較・統合して答えます\n3. 【長期パーソナルメモリ】「私は〇〇と申します」「〇〇が好き」を覚えて会話に活かします！';
+        return {
+          text: '私はチャット特化型の「カフェ・LLM」です☕\n1. 【普段はチャットメイン】明示的に質問されない限り勝手に検索へいかず、3層Transformerの会話脳でおしゃべりします\n2. 【AI画像生成】「〇〇の画像を作って」でイラストを描画＆保存できます\n3. 【コード生成＆自己進化】HTML/JS/Pythonコード作成や、会話を通じた自己進化を行います！',
+          imageUrl: null
+        };
       }
 
-      // 比較推論モード（「宇宙と地球の違い」など：テーマ名一致の正確な記事だけを使う！）
+      // 6. 比較推論モード（「AとBの違い」など明示的な比較質問）
       var compareMatch = trimmed.match(/^(.+?)と(.+?)(?:の|について|を)?(?:違い|共通点|比較|関係|どっち|比べて)/);
       if (compareMatch && compareMatch[1] && compareMatch[2]) {
         var topicA = compareMatch[1].replace(/^(?:ねえ|あの|ところで)/, '').trim();
@@ -1125,57 +1485,45 @@
         }
 
         if (resA && resB) {
-          return userNamePrefix + '「' + topicA + '」と「' + topicB + '」の2つの知識を横断検索して比較推論しました☕\n\n' +
-            '■ 【' + resA.topic + '】の特徴：\n' + resA.text + '\n\n' +
-            '■ 【' + resB.topic + '】の特徴：\n' + resB.text + '\n\n' +
-            '💡 【LLM統合まとめ】：\n「' + resA.topic + '」と「' + resB.topic + '」はそれぞれ独自の性質やスケールを持っていますが、互いに関わり合いながら私たちの世界を形作っています。さらに詳しく知りたい方はどちらかを指定してくださいね！';
+          return {
+            text: userNamePrefix + '「' + topicA + '」と「' + topicB + '」を比較しました☕\n\n' +
+              '■ 【' + resA.topic + '】\n' + resA.text + '\n\n' +
+              '■ 【' + resB.topic + '】\n' + resB.text,
+            imageUrl: null
+          };
         }
       }
 
-      if (/^(もっと詳しく|もっと教えて|続き|つづき|それで|それから|詳しく|詳細)/.test(normalized)) {
-        if (memoryStore.lastDiscussedTopic) {
-          memoryStore.lastTopicOffset = (memoryStore.lastTopicOffset || 0) + 3;
-          var moreMatches = searchMultiFactsInMemory([memoryStore.lastDiscussedTopic], memoryStore.lastTopicOffset, true);
-          if (moreMatches.length > 0 && moreMatches[0].text) {
-            return userNamePrefix + '「' + memoryStore.lastDiscussedTopic + '」の続きですね☕ 記憶にあるさらに詳しい情報をお伝えします！\n\n' + moreMatches[0].text;
-          } else {
-            return userNamePrefix + '「' + memoryStore.lastDiscussedTopic + '」について今持っているメモはここまでです☕ 「' + memoryStore.lastDiscussedTopic + 'の文章を作って」と頼んでくれたら、これまでの知識を統合して紹介文を作成しますよ！';
-          }
+      // 7. 続き要求（「もっと詳しく」など）
+      if (/^(もっと詳しく|もっと教えて|続き|つづき|詳細)/.test(normalized) && memoryStore.lastDiscussedTopic) {
+        memoryStore.lastTopicOffset = (memoryStore.lastTopicOffset || 0) + 3;
+        var moreMatches = searchMultiFactsInMemory([memoryStore.lastDiscussedTopic], memoryStore.lastTopicOffset, true);
+        if (moreMatches.length > 0 && moreMatches[0].text) {
+          return { text: userNamePrefix + '「' + memoryStore.lastDiscussedTopic + '」の続きですね☕\n\n' + moreMatches[0].text, imageUrl: null };
         }
       }
 
-      var writeMatch = trimmed.match(/^(.+?)(?:の|についての|に関する)?(?:文章|作文|紹介文|解説文|物語|ストーリー|スピーチ|まとめ)を?(?:作って|書いて|作成して|考えて|お願い)/);
+      // 8. 文章作成モード（「〇〇の文章を作って」）
+      var writeMatch = trimmed.match(/^(.+?)(?:の|についての|に関する)?(?:文章|作文|紹介文|解説文|物語|ストーリー|スピーチ|まとめ)を?(?:つくって|作って|書いて|作成して|考えて|お願い)/);
       if (writeMatch && writeMatch[1]) {
         var rawWriteTopic = writeMatch[1].trim();
         var writeTopic = (/^(それ|これ|あれ|その|この|さっきの)$/.test(rawWriteTopic) && memoryStore.lastDiscussedTopic)
           ? memoryStore.lastDiscussedTopic
           : rawWriteTopic;
-
-        memoryStore.lastDiscussedTopic = writeTopic;
-        var matchesForWrite = searchMultiFactsInMemory([writeTopic], 0, true);
-        var fact = matchesForWrite.length > 0 ? matchesForWrite[0].text : '';
-        if (!fact) {
-          try {
-            var fetchedTopic = await fetchTopicFromWikipedia(writeTopic);
-            if (fetchedTopic.text && fetchedTopic.titles.length > 0) {
-              fact = fetchedTopic.summaryForReply;
-              trainAndGrowMemory(fetchedTopic.text, fetchedTopic.titles, null, true);
-            }
-          } catch (e) {}
-        }
-
-        var llmCreativeTail = llmModel ? llmModel.generateTokenContinuation(writeTopic, 10) : '';
-        if (fact) {
-          return '【「' + writeTopic + '」についてのLLM統合解説文】\n\nみなさんは「' + writeTopic + '」についてご存知でしょうか。' + fact + 'このように、' + writeTopic + 'には奥深い背景と魅力があります。（LLM連想フレーズ：「' + writeTopic + llmCreativeTail + '」）';
-        } else {
-          return '【「' + writeTopic + '」をテーマにした文章】\n\n静かなカフェの窓辺で温かいコーヒーを飲みながら、「' + writeTopic + '」について思いを巡らせてみました。（LLM連想フレーズ：「' + writeTopic + llmCreativeTail + '」）';
-        }
+        var llmCreativeTail = llmModel ? llmModel.generateChatResponse(writeTopic, 14) : '';
+        return {
+          text: '【「' + writeTopic + '」をテーマにした文章】\n\n静かなカフェの窓辺で温かいコーヒーを味わいながら、「' + writeTopic + '」について思いを巡らせてみました。' + writeTopic + llmCreativeTail,
+          imageUrl: null
+        };
       }
 
-      var isExplicitQuery = /(?:について|とは|ってなに|って何|調べて|学んで|勉強して|検索して|学習して|教えて|解説して|説明して|知ってる|知りたい|[？?])/.test(trimmed);
-      var isShortNounInput = (normalized.length >= 2 && normalized.length <= 10 && !/(?:ですね|だよ|だな|ます|ました|はは|笑|！|!|だめ|もう)/.test(trimmed));
+      // ==========================================
+      // 9. ★重要修正：明示的に「尋ねる質問」のときだけ Wikipedia / knowledge.txt に行く！
+      // （単なる単語つぶやきや雑談では検索しない！）
+      // ==========================================
+      var isExplicitQuestion = /(?:とは[？?]?$|ってなに[？?]?$|って何[？?]?$|について教えて|を教えて|を調べて|について調べて|を解説して|を説明して|を検索して|を知りたい|とは何)/.test(trimmed);
 
-      if (isExplicitQuery || isShortNounInput) {
+      if (isExplicitQuestion) {
         var queryClean = trimmed
           .replace(/(?:について|を|とは|って|ってなに|って何|のことも)?(?:調べて|学んで|勉強して|検索して|学習して|教えて|解説して|説明して|知ってる|知りたい|何|なに|ですか|だよね|かな)[？?！!。]*$/g, '')
           .replace(/[？?！!。、]/g, ' ')
@@ -1190,30 +1538,62 @@
 
           var ragMatches = searchMultiFactsInMemory(keywords.length > 0 ? keywords : [targetKeyword], 0, true);
           if (ragMatches.length > 0) {
-            var replyBody = userNamePrefix + '「' + targetKeyword + '」についてknowledge.txtの知識ベースから正確な記事を見つけました☕\n\n' +
-              '■ 【' + ragMatches[0].topic + '】\n' + ragMatches[0].text;
-            if (ragMatches.length > 1) {
-              replyBody += '\n\n🔗 【関連する記憶：' + ragMatches[1].topic + '】\n' + ragMatches[1].text;
-            }
-            return replyBody;
+            return {
+              text: userNamePrefix + '「' + targetKeyword + '」についてknowledge.txtから見つけました☕\n\n■ 【' + ragMatches[0].topic + '】\n' + ragMatches[0].text,
+              imageUrl: null
+            };
           }
 
-          trainStatusEl.textContent = '🔍 Wikipediaで「' + targetKeyword + '」を自動調査＆LLM学習中...';
+          trainStatusEl.textContent = '🔍 質問にお答えするためWikipediaで「' + targetKeyword + '」を調査中...';
           try {
             var topicData = await fetchTopicFromWikipedia(targetKeyword);
             if (topicData.text && topicData.titles.length > 0) {
               trainAndGrowMemory(topicData.text, topicData.titles, null, true);
-              return userNamePrefix + '「' + targetKeyword + '」についてWikipediaから新しく調査し、knowledge.txtと2層Transformerの脳みそに記憶しました☕\n\n【調査結果：' + topicData.titles[0] + '】\n' + topicData.summaryForReply;
+              return {
+                text: userNamePrefix + '「' + targetKeyword + '」についてWikipediaで調べて、knowledge.txtと3層Transformerに記憶しました☕\n\n【調査結果：' + topicData.titles[0] + '】\n' + topicData.summaryForReply,
+                imageUrl: null
+              };
             }
           } catch (e) {}
         }
       }
 
-      var neuralHint = llmModel ? llmModel.generateTokenContinuation(trimmed, 8) : '';
-      return userNamePrefix + 'あはは、「' + trimmed + '」ですね☕ 思わず笑っちゃいました！（LLMの連想：「' + neuralHint + '」）\n何か調べてほしい言葉があるときは「〇〇について教えて」や「〇〇とは？」と聞いてくれたら今度はバッチリ正確に調べてきますよ！';
+      // ==========================================
+      // 10. ★メインのチャット会話エンジン（3層Transformerによる文脈応答）
+      // ==========================================
+      var transformerThought = llmModel ? llmModel.generateChatResponse(trimmed, 14) : '';
+      var chatReplies = [
+        'なるほど〜！「' + trimmed + '」ですね☕ ' + (transformerThought ? '私の中の3層Transformerは「' + transformerThought + '」って連想したよ！' : '') + ' もっと詳しくお話ししようよ！',
+        'わかります、その感じ！☕ 「' + trimmed + '」ってなんだか興味深いですね。' + (transformerThought ? '（LLMのつぶやき：' + transformerThought + '）' : ''),
+        'いいですね〜！☕ ' + (transformerThought ? '「' + transformerThought + '」なんて言葉が浮かんできました。' : '') + ' 他にも話したいことや描いてほしい絵があったらいつでも言ってね！'
+      ];
+      var chosenChat = chatReplies[Math.floor(Math.random() * chatReplies.length)];
+      return { text: userNamePrefix + chosenChat, imageUrl: null };
     }
 
-    function addMessageImmediate(text, sender) {
+    function appendArtToBubble(bubbleEl, imageUrl, title) {
+      if (!imageUrl) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'generated-art-wrap';
+
+      var img = document.createElement('img');
+      img.src = imageUrl;
+      img.alt = title || 'AI生成画像';
+      img.className = 'generated-art-img';
+
+      var dlBtn = document.createElement('a');
+      dlBtn.href = imageUrl;
+      dlBtn.download = 'cafe-llm-art.png';
+      dlBtn.className = 'art-download-btn';
+      dlBtn.textContent = '💾 この画像を保存する';
+
+      wrap.appendChild(img);
+      wrap.appendChild(dlBtn);
+      bubbleEl.appendChild(wrap);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function addMessageImmediate(text, sender, imageUrl) {
       if (sender === 'user') {
         var div = document.createElement('div');
         div.className = 'message user-msg';
@@ -1230,6 +1610,9 @@
         var bubble = document.createElement('div');
         bubble.className = 'message ai-msg';
         bubble.textContent = text;
+        if (imageUrl) {
+          appendArtToBubble(bubble, imageUrl, '保存されたアート');
+        }
         row.appendChild(avatar);
         row.appendChild(bubble);
         chatBox.appendChild(row);
@@ -1238,7 +1621,11 @@
       }
     }
 
-    function addMessageWithTyping(text, sender, callback) {
+    function addMessageWithTyping(replyObj, sender, callback) {
+      var text = typeof replyObj === 'string' ? replyObj : replyObj.text;
+      var imageUrl = typeof replyObj === 'object' ? replyObj.imageUrl : null;
+      var imageTitle = typeof replyObj === 'object' ? replyObj.imageTitle : '';
+
       var row = document.createElement('div');
       row.className = 'ai-row';
       var avatar = document.createElement('div');
@@ -1260,6 +1647,9 @@
           setTimeout(typeNext, TYPING_SPEED_MS);
         } else {
           div.classList.remove('typing-cursor');
+          if (imageUrl) {
+            appendArtToBubble(div, imageUrl, imageTitle);
+          }
           if (callback) callback();
         }
       }
@@ -1283,11 +1673,11 @@
       var userLikes = (memoryStore.userProfile && memoryStore.userProfile.likes.length > 0) ? memoryStore.userProfile.likes.join(' / ') : '未登録';
 
       knowledgePanel.innerHTML =
-        '<strong>🧠 カフェ・LLM 脳みそ＆長期メモリ状態:</strong><br>' +
-        '・単語トークナイザー語彙数: <b>' + vocabSize + '語</b>（2層Transformer重み永続保存中）<br>' +
+        '<strong>🧠 3層Transformer（LayerNorm + FFN）＆自己進化メモリ状態:</strong><br>' +
+        '・単語トークナイザー語彙数: <b>' + vocabSize + '語</b>（3層重み永続保存中）<br>' +
+        '・自己進化回数: <b>' + (memoryStore.evolutionCount || 0) + '回</b>（GitHub knowledge.txt 連動）<br>' +
         '・長期パーソナル記憶: 名前=<b>' + userName + '</b> / 好み=<b>' + userLikes + '</b><br>' +
-        '・knowledge.txt総量: <b>' + memoryStore.corpusText.length.toLocaleString() + '文字</b>（' + memoryStore.topics.length + 'テーマ）<br>' +
-        '<span style="color:#8d6e63;font-size:0.75rem;">最近学んだテーマ: ' + (memoryStore.topics.slice(-10).join(' / ') || 'なし') + '</span><br><br>' +
+        '・knowledge.txt総量: <b>' + memoryStore.corpusText.length.toLocaleString() + '文字</b><br><br>' +
         prefixNote + (previewText || 'まだ学習データがありません');
     }
 
@@ -1343,7 +1733,7 @@
       });
 
       var prevWeights = llmModel ? llmModel.exportWeights() : memoryStore.savedWeights;
-      var nextModel = new CafeDeepLLM(memoryStore.corpusText, prevWeights);
+      var nextModel = new CafeUltraTransformer(memoryStore.corpusText, prevWeights);
       var step = 0;
 
       function fastTrainLoop() {
@@ -1383,8 +1773,8 @@
         var percent = Math.round((step / TOTAL_STEPS) * 100);
         progressBarEl.style.width = percent + '%';
         trainStatusEl.textContent = isSilentBackground
-          ? '🔄 裏側で単語学習＆2層Transformer継続更新中... ' + percent + '%'
-          : '⚡ 単語トークナイザー＆2層Transformer学習中... ' + percent + '%';
+          ? '🔄 裏側で語彙学習＆3層Transformer自己進化中... ' + percent + '%'
+          : '⚡ 3層Transformer（LayerNorm + FFN）学習中... ' + percent + '%';
 
         setTimeout(fastTrainLoop, 5);
       }
@@ -1398,7 +1788,7 @@
       }
       if (isLearningNow) return;
       try {
-        trainStatusEl.textContent = '🌐 裏側で新しい知識を自動収集中...';
+        trainStatusEl.textContent = '🌐 裏側で語彙を自動学習中...';
         var fetched = await fetchRandomWebArticles();
         trainAndGrowMemory(fetched.text, fetched.titles, null, true);
       } catch (e) {}
@@ -1406,7 +1796,6 @@
 
     async function bootAI() {
       try {
-        // 制作者以外には設定画面を見せないため、自動では開かない
         githubConfigPanel.style.display = 'none';
 
         var loaded = await loadFromUnlimitedStorage();
@@ -1417,6 +1806,7 @@
             chatHistory: [],
             lastDiscussedTopic: '',
             lastTopicOffset: 0,
+            evolutionCount: 0,
             userProfile: { name: '', likes: [], facts: [] },
             savedWeights: null
           }, loaded);
@@ -1434,16 +1824,16 @@
 
         if (memoryStore.chatHistory && memoryStore.chatHistory.length > 0) {
           memoryStore.chatHistory.forEach(function(item) {
-            addMessageImmediate(item.text, item.sender);
+            addMessageImmediate(item.text, item.sender, item.imageUrl);
           });
         }
 
-        trainStatusEl.textContent = '🌐 ネットから新しい知識を収集し、LLMの脳みそを更新中...';
+        trainStatusEl.textContent = '🌐 語彙を学習し、3層Transformerの脳みそを更新中...';
         var fetched = await fetchRandomWebArticles();
 
         var isFirstEver = (!memoryStore.corpusText || memoryStore.corpusText.length <= 15);
         var greeting = isFirstEver
-          ? 'こんにちは！全方向進化した「カフェ・LLM」へようこそ☕\n単語トークナイザー・2層Transformer・横断比較推論・長期記憶を搭載したよ！「私は〇〇と申します」や「宇宙と地球の違い」「〇〇について教えて」など何でも試してみてね！'
+          ? 'こんにちは！チャット特化3層Transformer＆画像生成を搭載した「カフェ・LLM」へようこそ☕\n普段は気軽におしゃべりして、「猫と宇宙の画像を作って」でイラストを描いたり、「〇〇とは？」で調べものをしたりできるよ！'
           : null;
 
         trainAndGrowMemory(fetched.text, fetched.titles, greeting, false);
@@ -1469,11 +1859,14 @@
       promptInput.disabled = true;
       generateBtn.disabled = true;
 
-      var reply = await generateFullLLMReply(prompt);
-      memoryStore.chatHistory.push({ sender: 'ai', text: reply });
+      var replyObj = await generateFullLLMReply(prompt);
+      memoryStore.chatHistory.push({ sender: 'ai', text: replyObj.text });
+
+      // 会話から自己進化を実行
+      selfEvolveFromChat(prompt, replyObj.text);
       saveToPermanentMemory();
 
-      addMessageWithTyping(reply, 'ai', function() {
+      addMessageWithTyping(replyObj, 'ai', function() {
         promptInput.disabled = false;
         generateBtn.disabled = false;
         promptInput.focus();
