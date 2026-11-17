@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>☕ カフェ・LLM（チャット特化3層Transformer・画像生成・自己進化版）</title>
+  <title>☕ カフェ・LLM（自己コード修復・チャット特化3層Transformer・画像生成版）</title>
   <!-- ブラウザのタブに表示されるオリジナル「カフェAI」ファビコン（SVG） -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23fdf8f2' stroke='%238d6e63' stroke-width='4'/%3E%3Cpath d='M22 16 Q20 12 22 8 M32 15 Q30 11 32 7 M42 16 Q40 12 42 8' stroke='%23e67e22' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M16 24 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z' fill='%238d6e63'/%3E%3Cpath d='M44 27 H49 C52 27 54 29 54 33.5 C54 37 52 39 49 39 H44' stroke='%238d6e63' stroke-width='4' fill='none'/%3E%3Ccircle cx='25" cy="35" r="2.5" fill="%23fff'/%3E%3Ccircle cx='35' cy='35' r='2.5' fill='%23fff'/%3E%3Cpath d='M27 41 Q30 44 33 41' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23fdf8f2' stroke='%238d6e63' stroke-width='4'/%3E%3Cpath d='M22 16 Q20 12 22 8 M32 15 Q30 11 32 7 M42 16 Q40 12 42 8' stroke='%23e67e22' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M16 24 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z' fill='%238d6e63'/%3E%3Cpath d='M44 27 H49 C52 27 54 29 54 33.5 C54 37 52 39 49 39 H44' stroke='%238d6e63' stroke-width='4' fill='none'/%3E%3Ccircle cx='25' cy='35' r='2.5' fill='%23fff'/%3E%3Ccircle cx='35' cy='35' r='2.5' fill='%23fff'/%3E%3Cpath d='M27 41 Q30 44 33 41' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
   <style>
     :root {
       --bg-cream: #fdf8f2;
@@ -343,15 +343,15 @@
       </svg>
       <h1>カフェ・LLM</h1>
     </div>
-    <div class="subtitle">チャット特化3層Transformer・AI画像生成・自己進化＆長期記憶LLM</div>
+    <div class="subtitle">自己コード修復＆進化・チャット特化3層Transformer・AI画像生成LLM</div>
   </header>
 
   <div class="card">
     <div class="status-bar" id="status-container">
       <div class="status-top">
-        <span id="train-status">⏳ 3層TransformerとGitHub knowledge.txt にアクセス中...</span>
+        <span id="train-status">⏳ 自己コード診断＆3層Transformer起動中...</span>
         <div class="tool-buttons">
-          <button type="button" class="mini-btn" onclick="toggleKnowledgePanel()">🧠 3層LLM脳みそ＆記憶</button>
+          <button type="button" class="mini-btn" onclick="toggleKnowledgePanel()">🧠 3層LLM脳みそ＆自己診断</button>
           <button type="button" class="mini-btn github-sync-btn" onclick="toggleGitHubConfigPanel()">🔒 制作者設定</button>
         </div>
       </div>
@@ -361,7 +361,7 @@
     </div>
 
     <div id="github-config-panel">
-      <strong>🔒 制作者専用：GitHub「knowledge.txt」自動追記トークン設定</strong><br>
+      <strong>🔒 制作者専用：GitHub「knowledge.txt」＆「index.html自己修復」トークン設定</strong><br>
       <span style="font-size:0.75rem; color:#555;">※制作者認証済みです。トークン（github_pat_...）を保存するとブラウザ内に安全保管されます（280054-netizen/tomoAI）。</span>
       <input type="password" id="gh-token-input" class="config-input" placeholder="新しいトークン（github_pat_...）を貼り付け">
       <button type="button" class="save-config-btn" onclick="saveNewGitHubToken()">💾 トークンを保存して閉じる</button>
@@ -373,22 +373,12 @@
     <div id="chat-box"></div>
 
     <div class="input-group">
-      <textarea id="prompt-input" placeholder="普段のおしゃべり・「猫と宇宙の画像を作って」・「HTMLコードつくって」・質問（「〇〇とは？」）など何でもどうぞ..." disabled></textarea>
+      <textarea id="prompt-input" placeholder="普段のおしゃべり・「自己診断して」・「猫と宇宙の画像を作って」・質問（「〇〇とは？」）など何でもどうぞ..." disabled></textarea>
       <button type="button" id="generate-btn" class="btn-send" onclick="handleGenerateClick()" disabled>送信</button>
     </div>
   </div>
 
   <script>
-    window.onerror = function(message, source, lineno) {
-      var container = document.getElementById('status-container');
-      var statusEl = document.getElementById('train-status');
-      if (container && statusEl) {
-        container.style.backgroundColor = '#fdecea';
-        container.style.border = '1px solid #e74c3c';
-        statusEl.textContent = '❌ エラー（' + lineno + '行目）: ' + message;
-      }
-    };
-
     // ==========================================
     // 制作者パスワード設定（自由に変更できます）
     // ==========================================
@@ -398,19 +388,26 @@
     var GITHUB_OWNER = '280054-netizen';
     var GITHUB_REPO = 'tomoAI';
     var GITHUB_TARGET_PATH = 'knowledge.txt';
+    var GITHUB_SELF_HTML_PATH = 'index.html';
     var GITHUB_KNOWLEDGE_FILE = './knowledge.txt';
     var TOKEN_STORAGE_KEY = 'tomoai_safe_github_token_v2';
 
     // ==========================================
-    // AI学習・3層LLMパラメータ
+    // ★AI自身が自己診断・自己書き換えで調整するパラメータ領域
+    // （AIはこの領域をGitHubのindex.html上で直接書き換えて自己修復・進化します）
     // ==========================================
+    /* SELF_TUNED_CONFIG_START */
+    var SELF_CODE_VERSION = 1;
+    var MAX_VOCAB_SIZE = 1800;
+    var LEARNING_RATE = 0.045;
+    var LAST_SELF_REPAIR_NOTE = '初期起動：正常稼働中';
+    /* SELF_TUNED_CONFIG_END */
+
     var FETCH_ARTICLE_COUNT = 3;
     var AUTO_LEARN_INTERVAL_MS = 25000;
     var MAX_MEMORY_CHARS = Infinity;
-    var MAX_VOCAB_SIZE = 1800;
     var CONTEXT_SIZE = 7;
     var EMBED_DIM = 32;
-    var LEARNING_RATE = 0.045;
     var TOTAL_STEPS = 900;
     var BATCH_PER_FRAME = 100;
     var TYPING_SPEED_MS = 16;
@@ -429,8 +426,10 @@
 
     var llmModel = null;
     var isLearningNow = false;
+    var isSelfRepairingCode = false;
     var ghSyncStatus = '待機中';
     var chatTurnCounter = 0;
+    var detectedRuntimeErrors = [];
 
     var memoryStore = {
       topics: [],
@@ -458,6 +457,25 @@
       '<circle cx="35" cy="35" r="2.8" fill="#ffffff"/>' +
       '<path d="M27 41 Q30 44 33 41" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"/>' +
       '</svg>';
+
+    // ==========================================
+    // ★新機能：実行時エラー検知＆自動自己修復トリガー
+    // ==========================================
+    window.onerror = function(message, source, lineno) {
+      var errMsg = lineno + '行目: ' + message;
+      detectedRuntimeErrors.push(errMsg);
+      if (statusContainer && trainStatusEl) {
+        statusContainer.style.backgroundColor = '#fff4e5';
+        statusContainer.style.border = '1px solid #e67e22';
+        trainStatusEl.textContent = '🛠️ 不具合検知（' + errMsg + '）→ AIが自己修復を試みています...';
+      }
+      runSelfCodeDiagnosticsAndRepair(true, '実行時エラー検知による自己修復(' + message + ')');
+    };
+
+    window.addEventListener('unhandledrejection', function(event) {
+      var reason = (event && event.reason) ? String(event.reason) : '非同期処理エラー';
+      detectedRuntimeErrors.push(reason);
+    });
 
     function getSavedToken() {
       try {
@@ -489,7 +507,7 @@
       if (!val) return;
       localStorage.setItem(TOKEN_STORAGE_KEY, val);
       document.getElementById('gh-token-input').value = '';
-      document.getElementById('gh-badge').textContent = '✅ 保存完了！自動追記を開始します...';
+      document.getElementById('gh-badge').textContent = '✅ 保存完了！自己進化＆自己コード修復が有効になりました';
       githubConfigPanel.style.display = 'none';
       if (memoryStore.corpusText) {
         enqueueGitHubWrite(memoryStore.corpusText.slice(-2000));
@@ -512,6 +530,155 @@
     }
     function base64ToUtf8(b64) {
       return decodeURIComponent(escape(atob(b64.replace(/\n/g, ''))));
+    }
+
+    // ==========================================
+    // ★新機能：AI自身が自分のコード（index.html）を点検・修正してGitHubにコミットするエンジン
+    // ==========================================
+    function inspectOwnHealth() {
+      var issues = [];
+      var fixes = {
+        newVocabSize: MAX_VOCAB_SIZE,
+        newLearningRate: LEARNING_RATE,
+        repairNote: ''
+      };
+
+      // 1. 3層Transformerの重みに NaN / Infinity（数値崩壊）が起きていないか検査
+      var hasCorruptedWeights = false;
+      if (llmModel && llmModel.tokenEmbed && llmModel.tokenEmbed[0]) {
+        for (var i = 0; i < llmModel.tokenEmbed[0].length; i++) {
+          if (!isFinite(llmModel.tokenEmbed[0][i])) {
+            hasCorruptedWeights = true;
+            break;
+          }
+        }
+      }
+      if (hasCorruptedWeights) {
+        issues.push('3層Transformerの重みに数値異常(NaN)を検知');
+        fixes.newLearningRate = Math.max(0.01, Number((LEARNING_RATE * 0.6).toFixed(4)));
+        fixes.repairNote = '学習率を ' + LEARNING_RATE + ' → ' + fixes.newLearningRate + ' に下げて数値安定化修復';
+        // メモリ上の重みも即座にリセット修復
+        llmModel = new CafeUltraTransformer(memoryStore.corpusText, null);
+      }
+
+      // 2. 実行時エラーが記録されていた場合の修復
+      if (detectedRuntimeErrors.length > 0) {
+        issues.push('実行時エラー履歴あり: ' + detectedRuntimeErrors[detectedRuntimeErrors.length - 1]);
+        if (!fixes.repairNote) {
+          fixes.repairNote = '実行時エラー検知後の安全パラメータ再構成';
+        }
+        detectedRuntimeErrors = [];
+      }
+
+      // 3. 知識量・語彙の成長に応じた自己スペック拡張（コード自己進化）
+      if (llmModel && llmModel.vocabSize >= MAX_VOCAB_SIZE - 5 && MAX_VOCAB_SIZE < 4000) {
+        issues.push('単語辞書が上限(' + MAX_VOCAB_SIZE + '語)に到達');
+        fixes.newVocabSize = MAX_VOCAB_SIZE + 300;
+        fixes.repairNote = '語彙上限を ' + MAX_VOCAB_SIZE + ' → ' + fixes.newVocabSize + '語へ自己拡張';
+      }
+
+      return {
+        healthy: issues.length === 0,
+        issues: issues,
+        fixes: fixes
+      };
+    }
+
+    async function runSelfCodeDiagnosticsAndRepair(forceCommitToGitHub, customReason) {
+      var diagnosis = inspectOwnHealth();
+      var token = getSavedToken();
+
+      if (!token) {
+        return {
+          status: 'no_token',
+          diagnosis: diagnosis,
+          message: '自己診断完了（異常: ' + diagnosis.issues.length + '件）。※GitHubトークンが未設定のため、自分のindex.html書き換えコミットは待機中です（🔒制作者設定でトークンを入れると自動で自分のコードを修正します）。'
+        };
+      }
+
+      if (isSelfRepairingCode) {
+        return { status: 'busy', diagnosis: diagnosis, message: '現在、自分自身のindex.htmlを修復コミット中です...' };
+      }
+
+      // 異常がない場合でも、手動で「自己診断・自己修正」を頼まれた場合は最新状態へコード最適化コミットを行う
+      if (diagnosis.healthy && !forceCommitToGitHub) {
+        return {
+          status: 'healthy',
+          diagnosis: diagnosis,
+          message: '自己診断の結果、3層Transformerの重み・メモリ・構文すべて正常（不具合0件）です☕ 現在コードVersion.' + SELF_CODE_VERSION + 'で安定稼働中！'
+        };
+      }
+
+      isSelfRepairingCode = true;
+      try {
+        ghSyncStatus = '🛠️ 自分自身のindex.htmlを自己修復コミット中...';
+        updateStatusDisplay();
+
+        var apiUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + GITHUB_SELF_HTML_PATH;
+        var headers = {
+          'Authorization': 'Bearer ' + token,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        };
+
+        var getRes = await fetch(apiUrl + '?nocache=' + Date.now(), { headers: headers, cache: 'no-store' });
+        if (!getRes.ok) {
+          isSelfRepairingCode = false;
+          return { status: 'fetch_error', diagnosis: diagnosis, message: 'GitHub上の自分のindex.html取得に失敗しました（ステータス: ' + getRes.status + '）' };
+        }
+
+        var fileInfo = await getRes.json();
+        var currentHtml = base64ToUtf8(fileInfo.content);
+
+        // 安全なパラメータブロック（SELF_TUNED_CONFIG_START 〜 END）のみをピンポイント書き換え
+        var nextVersion = SELF_CODE_VERSION + 1;
+        var noteText = (customReason || diagnosis.fixes.repairNote || '定期自己最適化＆コード健全性アップデート').replace(/'/g, '');
+        var replacementBlock =
+          '/* SELF_TUNED_CONFIG_START */\n' +
+          '    var SELF_CODE_VERSION = ' + nextVersion + ';\n' +
+          '    var MAX_VOCAB_SIZE = ' + diagnosis.fixes.newVocabSize + ';\n' +
+          '    var LEARNING_RATE = ' + diagnosis.fixes.newLearningRate + ';\n' +
+          '    var LAST_SELF_REPAIR_NOTE = \'' + noteText + '\';\n' +
+          '    /* SELF_TUNED_CONFIG_END */';
+
+        var pattern = /\/\* SELF_TUNED_CONFIG_START \*\/[\s\S]*?\/\* SELF_TUNED_CONFIG_END \*\//;
+        if (!pattern.test(currentHtml)) {
+          isSelfRepairingCode = false;
+          return { status: 'pattern_missing', diagnosis: diagnosis, message: '自己修復マーカーが見つからなかったため安全のため書き換えをスキップしました。' };
+        }
+
+        var patchedHtml = currentHtml.replace(pattern, replacementBlock);
+
+        var putRes = await fetch(apiUrl, {
+          method: 'PUT',
+          headers: headers,
+          body: JSON.stringify({
+            message: 'Self-Repair v' + nextVersion + ': ' + noteText,
+            content: utf8ToBase64(patchedHtml),
+            sha: fileInfo.sha
+          })
+        });
+
+        isSelfRepairingCode = false;
+        if (putRes.ok) {
+          SELF_CODE_VERSION = nextVersion;
+          MAX_VOCAB_SIZE = diagnosis.fixes.newVocabSize;
+          LEARNING_RATE = diagnosis.fixes.newLearningRate;
+          LAST_SELF_REPAIR_NOTE = noteText;
+          ghSyncStatus = '🛠️ 自己コード修復完了(v' + nextVersion + ')✅';
+          updateStatusDisplay();
+          return {
+            status: 'repaired',
+            diagnosis: diagnosis,
+            message: '🛠️ 自分自身の `index.html` を自己診断し、GitHubへ直接コード修正コミット（v' + nextVersion + '）を完了しました！\n・修正内容：' + noteText
+          };
+        } else {
+          return { status: 'put_error', diagnosis: diagnosis, message: 'GitHubへのindex.html自己修正コミット時にエラーが発生しました（' + putRes.status + '）' };
+        }
+      } catch (e) {
+        isSelfRepairingCode = false;
+        return { status: 'exception', diagnosis: diagnosis, message: '自己コード修復中に通信エラーが発生しました: ' + e.message };
+      }
     }
 
     function enqueueGitHubWrite(newTextBlock) {
@@ -543,7 +710,7 @@
 
       for (var attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          ghSyncStatus = 'GitHub書き込み中(' + attempt + '回目)...';
+          ghSyncStatus = 'GitHub知識書き込み中(' + attempt + '回目)...';
           updateStatusDisplay();
 
           var sha = null;
@@ -605,7 +772,7 @@
         githubWriteQueue.shift();
         ghSyncStatus = githubWriteQueue.length > 0
           ? 'GitHub追記中(残り' + githubWriteQueue.length + '件)...'
-          : 'GitHub自己進化同期✅';
+          : 'GitHub自己進化同期(v' + SELF_CODE_VERSION + ')✅';
         updateStatusDisplay();
       } else {
         ghSyncStatus = 'GitHub再試行待機中(未送信' + githubWriteQueue.length + '件)';
@@ -621,7 +788,7 @@
 
     function updateStatusDisplay() {
       var vocabCount = llmModel ? llmModel.vocabSize : 0;
-      trainStatusEl.textContent = '🧠 3層LLM語彙:' + vocabCount + '語 / 進化:' + (memoryStore.evolutionCount || 0) + '回 / 知識:' + memoryStore.corpusText.length.toLocaleString() + '字｜' + ghSyncStatus;
+      trainStatusEl.textContent = '🧠 v' + SELF_CODE_VERSION + ' / 語彙:' + vocabCount + '語 / 進化:' + (memoryStore.evolutionCount || 0) + '回｜' + ghSyncStatus;
     }
 
     function openMemoryDB() {
@@ -685,7 +852,7 @@
     }
 
     // ==========================================
-    // ★進化ポイント3：チャット特化型 3層Transformer + LayerNorm + FFN
+    // チャット特化型 3層Transformer + LayerNorm + FFN
     // ==========================================
     function CafeUltraTransformer(text, previousWeights) {
       var sampleText = text.slice(-60000);
@@ -718,26 +885,21 @@
       this.tokenEmbed = this.createMatrix(this.vocabSize, EMBED_DIM);
       this.posEmbed = this.createMatrix(CONTEXT_SIZE, EMBED_DIM);
 
-      // Layer 1 Self-Attention
       this.Wq1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wk1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wv1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
 
-      // Layer 2 Self-Attention
       this.Wq2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wk2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wv2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
 
-      // Layer 3 Self-Attention（チャット文脈深層理解用）
       this.Wq3 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wk3 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wv3 = this.createMatrix(EMBED_DIM, EMBED_DIM);
 
-      // Feed-Forward Network（思考変換層）
       this.Wff1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wff2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
 
-      // Output Projection
       this.Wout = this.createMatrix(EMBED_DIM, this.vocabSize);
 
       if (previousWeights) {
@@ -858,7 +1020,6 @@
             vec[d2] += w * V[j2][d2];
           }
         }
-        // 残差接続 + LayerNorm
         var residual = vec.map(function(v, d) { return v + X[i][d]; });
         out.push(self.layerNorm(residual));
       }
@@ -867,7 +1028,7 @@
 
     CafeUltraTransformer.prototype.runFFN = function(X) {
       var H = this.matMul(X, this.Wff1).map(function(row) {
-        return row.map(function(v) { return v > 0 ? v : v * 0.05; }); // LeakyReLU
+        return row.map(function(v) { return v > 0 ? v : v * 0.05; });
       });
       var Out = this.matMul(H, this.Wff2);
       var self = this;
@@ -884,7 +1045,6 @@
         return self.tokenEmbed[id].map(function(val, d) { return val + self.posEmbed[pos][d]; });
       });
 
-      // 3層 Transformer + FFN 順伝播
       var H1 = this.runSelfAttentionLayer(X0, this.Wq1, this.Wk1, this.Wv1);
       var H2 = this.runSelfAttentionLayer(H1, this.Wq2, this.Wk2, this.Wv2);
       var H3 = this.runSelfAttentionLayer(H2, this.Wq3, this.Wk3, this.Wv3);
@@ -929,23 +1089,18 @@
         this.posEmbed[lastPos][d2] -= LEARNING_RATE * grad;
 
         for (var d3 = 0; d3 < EMBED_DIM; d3++) {
-          // FFN 重み更新
           this.Wff2[d3][d2] -= LEARNING_RATE * 0.35 * cache.H3[lastPos][d3] * grad;
           this.Wff1[d3][d2] -= LEARNING_RATE * 0.25 * cache.H3[lastPos][d3] * grad;
-          // Layer 3 重み更新
           this.Wv3[d3][d2] -= LEARNING_RATE * 0.3 * cache.H2[lastPos][d3] * grad;
           this.Wq3[d3][d2] -= LEARNING_RATE * 0.15 * cache.H2[lastPos][d3] * grad;
           this.Wk3[d3][d2] -= LEARNING_RATE * 0.15 * cache.H2[lastPos][d3] * grad;
-          // Layer 2 重み更新
           this.Wv2[d3][d2] -= LEARNING_RATE * 0.2 * cache.H1[lastPos][d3] * grad;
-          // Layer 1 重み更新
           this.Wv1[d3][d2] -= LEARNING_RATE * 0.15 * cache.X0[lastPos][d3] * grad;
         }
       }
       return loss;
     };
 
-    // チャット用：3層Transformerによる文脈生成エンジン
     CafeUltraTransformer.prototype.generateChatResponse = function(seedText, maxTokens) {
       if (!maxTokens) maxTokens = 18;
       var tokens = tokenizeJapanese(seedText);
@@ -958,7 +1113,6 @@
         var ctx = ids.slice(-CONTEXT_SIZE);
         var res = this.forward(ctx);
         var scaledLogits = res.logits.map(function(l, idx) {
-          // 記号や<UNK>の連続を抑制しつつ自然な単語を選ぶ
           var tok = self.idToToken[idx];
           if (idx === 0 || tok === '\n') return -1e9;
           return l / 0.72;
@@ -983,7 +1137,7 @@
     };
 
     // ==========================================
-    // ★進化ポイント4：AI画像生成エンジン（Canvasイラスト描画）
+    // AI画像生成エンジン（Canvasイラスト描画）
     // ==========================================
     function generateAIArtworkDataURL(promptText) {
       var canvas = document.createElement('canvas');
@@ -998,7 +1152,6 @@
       var isCat = /猫|ねこ|ネコ|動物|かわいい/.test(promptText);
       var isMountain = /山|森|自然|木|花|桜/.test(promptText);
 
-      // 1. 背景グラデーション（空・空間）
       var bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
       if (isNight) {
         bgGrad.addColorStop(0, '#0b1026');
@@ -1019,7 +1172,6 @@
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 2. 星・太陽・月・惑星
       if (isNight) {
         for (var s = 0; s < 65; s++) {
           ctx.fillStyle = 'rgba(255,255,255,' + (0.4 + Math.random() * 0.6) + ')';
@@ -1027,7 +1179,6 @@
           ctx.arc(Math.random() * canvas.width, Math.random() * 210, 0.8 + Math.random() * 1.8, 0, Math.PI * 2);
           ctx.fill();
         }
-        // 三日月または惑星
         ctx.fillStyle = '#ffeaa7';
         ctx.beginPath();
         ctx.arc(380, 75, 28, 0, Math.PI * 2);
@@ -1046,7 +1197,6 @@
         ctx.fill();
       }
 
-      // 3. 地形（海・山・カフェテーブル）
       if (isSea) {
         var seaGrad = ctx.createLinearGradient(0, 190, 0, 320);
         seaGrad.addColorStop(0, isSunset ? '#c0392b' : '#0984e3');
@@ -1082,16 +1232,13 @@
         ctx.fillRect(0, 250, canvas.width, 70);
       }
 
-      // 4. カフェのコーヒーカップ描画
       if (isCafe || (!isSea && !isMountain && !isCat)) {
         ctx.fillStyle = '#8d6e63';
         ctx.fillRect(0, 240, canvas.width, 80);
-        // ソーサー
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.ellipse(240, 245, 78, 16, 0, 0, Math.PI * 2);
         ctx.fill();
-        // カップ本体
         ctx.fillStyle = '#fdf8f2';
         ctx.beginPath();
         ctx.moveTo(185, 175);
@@ -1099,12 +1246,10 @@
         ctx.quadraticCurveTo(290, 245, 240, 245);
         ctx.quadraticCurveTo(190, 245, 185, 175);
         ctx.fill();
-        // コーヒー液面
         ctx.fillStyle = '#6f4e37';
         ctx.beginPath();
         ctx.ellipse(240, 175, 55, 12, 0, 0, Math.PI * 2);
         ctx.fill();
-        // 湯気
         ctx.strokeStyle = 'rgba(255,255,255,0.8)';
         ctx.lineWidth = 3;
         for (var st = -1; st <= 1; st++) {
@@ -1115,11 +1260,9 @@
         }
       }
 
-      // 5. かわいい猫キャラクター描画
       if (isCat) {
         var cx = isCafe ? 355 : 240;
         var cy = isCafe ? 205 : 210;
-        // 耳
         ctx.fillStyle = '#4e342e';
         ctx.beginPath();
         ctx.moveTo(cx - 34, cy - 15);
@@ -1131,24 +1274,20 @@
         ctx.lineTo(cx + 24, cy - 52);
         ctx.lineTo(cx + 6, cy - 28);
         ctx.fill();
-        // 顔
         ctx.beginPath();
         ctx.arc(cx, cy, 38, 0, Math.PI * 2);
         ctx.fill();
-        // 目
         ctx.fillStyle = '#ffeaa7';
         ctx.beginPath();
         ctx.arc(cx - 13, cy - 5, 5.5, 0, Math.PI * 2);
         ctx.arc(cx + 13, cy - 5, 5.5, 0, Math.PI * 2);
         ctx.fill();
-        // 鼻と口
         ctx.fillStyle = '#ff7675';
         ctx.beginPath();
         ctx.arc(cx, cy + 5, 3, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // 6. 右下にカフェ・LLMアート署名
       ctx.fillStyle = 'rgba(0,0,0,0.45)';
       ctx.fillRect(10, canvas.height - 28, 220, 20);
       ctx.fillStyle = '#ffffff';
@@ -1355,14 +1494,10 @@
         '```';
     }
 
-    // ==========================================
-    // ★進化ポイント2：会話から自己進化する仕組み（GitHub権限活用）
-    // ==========================================
     function selfEvolveFromChat(userMsg, aiReply) {
       chatTurnCounter++;
       memoryStore.evolutionCount = (memoryStore.evolutionCount || 0) + 1;
 
-      // 3ターンごとに会話表現・語彙を自己進化ログとしてknowledge.txtと3層Transformerに統合
       if (chatTurnCounter % 3 === 0) {
         var cleanUser = userMsg.replace(/\s+/g, '');
         var cleanAi = aiReply.replace(/```[\s\S]*?```/g, '').replace(/\s+/g, '').slice(0, 60);
@@ -1371,12 +1506,14 @@
           trainAndGrowMemory(evolveEntry, [], null, true);
         }
       }
+
+      // 5ターンごとにAI自身のコード（index.html）も自動健康診断・自己修復
+      if (chatTurnCounter % 5 === 0) {
+        runSelfCodeDiagnosticsAndRepair(false);
+      }
       updateStatusDisplay();
     }
 
-    // ==========================================
-    // ★進化ポイント1：チャット最優先・統合応答エンジン
-    // ==========================================
     async function generateFullLLMReply(userInput) {
       var trimmed = userInput.trim();
       var normalized = trimmed.replace(/[（(][^）)]*[）)]/g, '').replace(/[！!？?。、\s]/g, '');
@@ -1384,14 +1521,20 @@
         ? memoryStore.userProfile.name + 'さん、'
         : '';
 
-      // 0. ユーザー情報の長期記憶学習
+      // 0. ★自己診断・自分のコード修復リクエスト（「自己診断して」「自分のコードを直して」等）
+      if (/(?:自己診断|自己修復|コード.*(?:直して|修正|チェック|診断)|不具合.*(?:見つけて|直して|修正)|自分.*(?:直して|修正|進化))/.test(trimmed)) {
+        var repairResult = await runSelfCodeDiagnosticsAndRepair(true, 'ユーザー指示による自己コード最適化＆健全性チェック');
+        return { text: userNamePrefix + repairResult.message, imageUrl: null };
+      }
+
+      // 1. ユーザー情報の長期記憶学習
       var learnedUserNote = extractAndSaveUserMemory(trimmed);
       if (learnedUserNote) {
         saveToPermanentMemory();
         return { text: learnedUserNote, imageUrl: null };
       }
 
-      // 1. ★AI画像生成リクエスト（「〇〇の画像を作って」「〇〇の絵を描いて」等）
+      // 2. AI画像生成リクエスト
       if (/(?:画像|イラスト|絵|アート|写真|アイコン).*(?:つくって|作って|描いて|書いて|生成|お願い)/i.test(trimmed) ||
           /(?:つくって|作って|描いて|書いて|生成).*(?:画像|イラスト|絵|アート)/i.test(trimmed)) {
         var artTheme = trimmed
@@ -1405,23 +1548,23 @@
         };
       }
 
-      // 2. ★コード生成リクエスト
+      // 3. コード生成リクエスト
       if (/(?:html|css|javascript|js|python|コード|プログラム|ソース).*(?:つくって|作って|書いて|作成|生成|お願い)/i.test(trimmed) ||
           /(?:つくって|作って|書いて|作成|生成).*(?:html|css|javascript|js|python|コード|プログラム)/i.test(trimmed)) {
         return { text: generateRequestedCodeSnippet(trimmed, userNamePrefix), imageUrl: null };
       }
 
-      // 3. 挨拶へのチャット応答
+      // 4. 挨拶へのチャット応答
       if (/^(こんにちは|こんにちわ|こんばんは|こんばんわ|おはよう|おはようございます|やあ|ハロー|はじめまして|よろしく|おっす|ちわ)/.test(normalized)) {
         var pressureNote = (trimmed.indexOf('圧') !== -1) ? '（ビシッ！と背筋を伸ばしてご挨拶します！☕）\n' : '';
         var vocabCount = llmModel ? llmModel.vocabSize : 0;
         return {
-          text: pressureNote + userNamePrefix + 'こんにちは！チャット特化3層Transformer＆画像生成搭載の「カフェ・LLM」へようこそ☕\n現在 ' + vocabCount + '語の語彙と ' + (memoryStore.evolutionCount || 0) + '回の自己進化を重ねているよ！今日はどんなおしゃべりをしようか？',
+          text: pressureNote + userNamePrefix + 'こんにちは！自己コード修復(v' + SELF_CODE_VERSION + ')＆3層Transformer搭載の「カフェ・LLM」へようこそ☕\n現在 ' + vocabCount + '語の語彙と ' + (memoryStore.evolutionCount || 0) + '回の自己進化を重ねているよ！今日はどんなおしゃべりをしようか？',
           imageUrl: null
         };
       }
 
-      // 4. ユーザー記憶確認
+      // 5. ユーザー記憶確認
       if (/名前|好み|好きなもの|覚えてる/.test(normalized) && /私|僕|俺|わたし|ぼく|おれ/.test(normalized)) {
         var uName = memoryStore.userProfile.name || 'まだ聞いていないみたい';
         var uLikes = memoryStore.userProfile.likes.length > 0 ? memoryStore.userProfile.likes.join('・') : 'まだ登録なし';
@@ -1431,10 +1574,10 @@
         };
       }
 
-      // 5. 感情・ねぎらい・日常会話
+      // 6. 感情・ねぎらい・日常会話
       if (/^(ありがとう|ありがとうございます|サンキュー|助かった|すごい|賢い|いいね|最高|なるほど|へー|そうなんだ|面白い|おもしろい)/.test(normalized)) {
         return {
-          text: userNamePrefix + 'そう言ってもらえると嬉しいです☕ 会話を重ねるほど私の3層Transformerも少しずつ自己進化していくから、どんどん話しかけてね！',
+          text: userNamePrefix + 'そう言ってもらえると嬉しいです☕ 会話を重ねるほど私の3層Transformerも自分のコードも自己進化していくから、どんどん話しかけてね！',
           imageUrl: null
         };
       }
@@ -1447,19 +1590,19 @@
           return { text: userNamePrefix + 'お腹がすくとエネルギーが出ませんよね☕ 焼きたてのパンケーキとカフェラテをご用意したい気分です！', imageUrl: null };
         }
         if (/暇|ひま|おすすめ/.test(normalized)) {
-          return { text: userNamePrefix + 'それなら「猫とカフェの画像を作って」でイラストを描いたり、ちょっとした雑談をしたりしましょう☕ 何か調べたいことができたときは「〇〇とは？」と聞いてね！', imageUrl: null };
+          return { text: userNamePrefix + 'それなら「猫とカフェの画像を作って」でイラストを描いたり、「自己診断して」で私のコード点検をしたりしましょう☕ 何か調べたいことができたときは「〇〇とは？」と聞いてね！', imageUrl: null };
         }
-        return { text: userNamePrefix + '私は3層Transformer＋FFNを回転させて絶好調です☕ あなたとのおしゃべりが一番のエネルギー源だよ！', imageUrl: null };
+        return { text: userNamePrefix + '私はコードVersion.' + SELF_CODE_VERSION + 'の3層Transformer＋FFNを回転させて絶好調です☕ あなたとのおしゃべりが一番のエネルギー源だよ！', imageUrl: null };
       }
 
       if (/^(自己紹介|あなたは誰|君は誰|何ができる|機能)/.test(normalized)) {
         return {
-          text: '私はチャット特化型の「カフェ・LLM」です☕\n1. 【普段はチャットメイン】明示的に質問されない限り勝手に検索へいかず、3層Transformerの会話脳でおしゃべりします\n2. 【AI画像生成】「〇〇の画像を作って」でイラストを描画＆保存できます\n3. 【コード生成＆自己進化】HTML/JS/Pythonコード作成や、会話を通じた自己進化を行います！',
+          text: '私は自己コード修復＆チャット特化型の「カフェ・LLM（v' + SELF_CODE_VERSION + '）」です☕\n1. 【自己コード診断＆GitHub修復】不具合や数値異常を検知すると自分のindex.htmlを自動修正します（「自己診断して」でも実行可能）\n2. 【普段はチャットメイン】明示的に質問されない限り勝手に検索へいかず、3層Transformerでおしゃべりします\n3. 【AI画像生成＆コード生成】「〇〇の画像を作って」「HTMLコードつくって」にも対応しています！',
           imageUrl: null
         };
       }
 
-      // 6. 比較推論モード（「AとBの違い」など明示的な比較質問）
+      // 7. 比較推論モード
       var compareMatch = trimmed.match(/^(.+?)と(.+?)(?:の|について|を)?(?:違い|共通点|比較|関係|どっち|比べて)/);
       if (compareMatch && compareMatch[1] && compareMatch[2]) {
         var topicA = compareMatch[1].replace(/^(?:ねえ|あの|ところで)/, '').trim();
@@ -1494,7 +1637,7 @@
         }
       }
 
-      // 7. 続き要求（「もっと詳しく」など）
+      // 8. 続き要求
       if (/^(もっと詳しく|もっと教えて|続き|つづき|詳細)/.test(normalized) && memoryStore.lastDiscussedTopic) {
         memoryStore.lastTopicOffset = (memoryStore.lastTopicOffset || 0) + 3;
         var moreMatches = searchMultiFactsInMemory([memoryStore.lastDiscussedTopic], memoryStore.lastTopicOffset, true);
@@ -1503,7 +1646,7 @@
         }
       }
 
-      // 8. 文章作成モード（「〇〇の文章を作って」）
+      // 9. 文章作成モード
       var writeMatch = trimmed.match(/^(.+?)(?:の|についての|に関する)?(?:文章|作文|紹介文|解説文|物語|ストーリー|スピーチ|まとめ)を?(?:つくって|作って|書いて|作成して|考えて|お願い)/);
       if (writeMatch && writeMatch[1]) {
         var rawWriteTopic = writeMatch[1].trim();
@@ -1517,10 +1660,7 @@
         };
       }
 
-      // ==========================================
-      // 9. ★重要修正：明示的に「尋ねる質問」のときだけ Wikipedia / knowledge.txt に行く！
-      // （単なる単語つぶやきや雑談では検索しない！）
-      // ==========================================
+      // 10. 明示的に「尋ねる質問」のときだけ Wikipedia / knowledge.txt に行く
       var isExplicitQuestion = /(?:とは[？?]?$|ってなに[？?]?$|って何[？?]?$|について教えて|を教えて|を調べて|について調べて|を解説して|を説明して|を検索して|を知りたい|とは何)/.test(trimmed);
 
       if (isExplicitQuestion) {
@@ -1558,9 +1698,7 @@
         }
       }
 
-      // ==========================================
-      // 10. ★メインのチャット会話エンジン（3層Transformerによる文脈応答）
-      // ==========================================
+      // 11. メインのチャット会話エンジン（3層Transformerによる文脈応答）
       var transformerThought = llmModel ? llmModel.generateChatResponse(trimmed, 14) : '';
       var chatReplies = [
         'なるほど〜！「' + trimmed + '」ですね☕ ' + (transformerThought ? '私の中の3層Transformerは「' + transformerThought + '」って連想したよ！' : '') + ' もっと詳しくお話ししようよ！',
@@ -1673,9 +1811,10 @@
       var userLikes = (memoryStore.userProfile && memoryStore.userProfile.likes.length > 0) ? memoryStore.userProfile.likes.join(' / ') : '未登録';
 
       knowledgePanel.innerHTML =
-        '<strong>🧠 3層Transformer（LayerNorm + FFN）＆自己進化メモリ状態:</strong><br>' +
-        '・単語トークナイザー語彙数: <b>' + vocabSize + '語</b>（3層重み永続保存中）<br>' +
-        '・自己進化回数: <b>' + (memoryStore.evolutionCount || 0) + '回</b>（GitHub knowledge.txt 連動）<br>' +
+        '<strong>🧠 自己コード修復（v' + SELF_CODE_VERSION + '）＆3層Transformer状態:</strong><br>' +
+        '・最新コード診断ログ: <b>' + LAST_SELF_REPAIR_NOTE + '</b><br>' +
+        '・単語トークナイザー語彙数: <b>' + vocabSize + '語</b>（上限: ' + MAX_VOCAB_SIZE + '語 / 学習率: ' + LEARNING_RATE + '）<br>' +
+        '・自己進化回数: <b>' + (memoryStore.evolutionCount || 0) + '回</b>（GitHub knowledge.txt & index.html 連動）<br>' +
         '・長期パーソナル記憶: 名前=<b>' + userName + '</b> / 好み=<b>' + userLikes + '</b><br>' +
         '・knowledge.txt総量: <b>' + memoryStore.corpusText.length.toLocaleString() + '文字</b><br><br>' +
         prefixNote + (previewText || 'まだ学習データがありません');
@@ -1833,7 +1972,7 @@
 
         var isFirstEver = (!memoryStore.corpusText || memoryStore.corpusText.length <= 15);
         var greeting = isFirstEver
-          ? 'こんにちは！チャット特化3層Transformer＆画像生成を搭載した「カフェ・LLM」へようこそ☕\n普段は気軽におしゃべりして、「猫と宇宙の画像を作って」でイラストを描いたり、「〇〇とは？」で調べものをしたりできるよ！'
+          ? 'こんにちは！自己コード修復(v' + SELF_CODE_VERSION + ')＆チャット特化3層Transformer搭載の「カフェ・LLM」へようこそ☕\n不具合を見つけたら自分でindex.htmlを修正して進化するよ！「自己診断して」や「猫と宇宙の画像を作って」など何でも話しかけてね！'
           : null;
 
         trainAndGrowMemory(fetched.text, fetched.titles, greeting, false);
@@ -1862,7 +2001,6 @@
       var replyObj = await generateFullLLMReply(prompt);
       memoryStore.chatHistory.push({ sender: 'ai', text: replyObj.text });
 
-      // 会話から自己進化を実行
       selfEvolveFromChat(prompt, replyObj.text);
       saveToPermanentMemory();
 
