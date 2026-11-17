@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>☕ カフェ・LLM（8層Transformer・言葉吟味層・日常会話.txtエポック学習・自己修復版）</title>
+  <title>☕ カフェ・LLM（8層Transformer・言葉吟味層・日常会話.txtエポック学習・入力優先ポーズ版）</title>
   <!-- ブラウザのタブに表示されるオリジナル「カフェAI」ファビコン（SVG） -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23fdf8f2' stroke='%238d6e63' stroke-width='4'/%3E%3Cpath d='M22 16 Q20 12 22 8 M32 15 Q30 11 32 7 M42 16 Q40 12 42 8' stroke='%23e67e22' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M16 24 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z' fill='%238d6e63'/%3E%3Cpath d='M44 27 H49 C52 28 54 30 54 33.5 C54 37 52 39 49 39 H44' stroke='%238d6e63' stroke-width='4' fill='none'/%3E%3Ccircle cx='25' cy='35' r='2.5' fill='%23fff'/%3E%3Ccircle cx='35' cy='35' r='2.5' fill='%23fff'/%3E%3Cpath d='M27 41 Q30 44 33 41' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
   <style>
@@ -343,7 +343,7 @@
       </svg>
       <h1>カフェ・LLM</h1>
     </div>
-    <div class="subtitle">8層Transformer・言葉吟味層・日常会話.txtエポック反復学習・自己修復・AI画像生成LLM</div>
+    <div class="subtitle">8層Transformer・言葉吟味層・日常会話.txtエポック反復学習・入力優先ポーズ版</div>
   </header>
 
   <div class="card">
@@ -409,12 +409,12 @@
     // ★AI自身が自己診断・自己書き換えで調整するパラメータ領域
     // ==========================================
     /* SELF_TUNED_CONFIG_START */
-    var SELF_CODE_VERSION = 8;
+    var SELF_CODE_VERSION = 9;
     var TRANSFORMER_LAYERS = 8;
     var RECENT_BLOCK_WINDOW = 8;
-    var MAX_VOCAB_SIZE = 5500;
+    var MAX_VOCAB_SIZE = 5000;
     var LEARNING_RATE = 0.04;
-    var LAST_SELF_REPAIR_NOTE = '語彙上限を 5000 → 5500語へ自己拡張';
+    var LAST_SELF_REPAIR_NOTE = '入力中・フォーカス中のエポック学習完全一時停止＆軽量バッチ間隔制御を追加';
     /* SELF_TUNED_CONFIG_END */
 
     var FETCH_ARTICLE_COUNT = 3;
@@ -425,14 +425,16 @@
     var CANDIDATE_COUNT = 5;
     var TOTAL_STEPS = 750;
     var CHAT_EPOCH_STEPS = 250;
-    var BATCH_PER_FRAME = 75;
+    var BATCH_PER_FRAME = 18;
+    var TRAIN_FRAME_INTERVAL_MS = 32;
+    var IDLE_RESUME_DELAY_MS = 2500;
     var TYPING_SPEED_MS = 16;
     var DB_NAME = 'CafeUltraLLM5LayerDB';
     var DB_STORE = 'llmStateStore';
     var STORAGE_KEY = 'cafe_ultra_llm_5layer_v2';
 
     // ==========================================
-    // ★内蔵の日常会話コーパス（日常会話.txtと結合してエポック反復学習する土台）
+    // ★日常会話コーパス（日常会話.txt 未取得時のフォールバック＆補助教材）
     // ==========================================
     var BASE_CHAT_CORPUS = [
       '今日はいい天気だね。本当だね、風が心地よくてお散歩したくなる気分だよ！',
@@ -470,6 +472,35 @@
     var detectedRuntimeErrors = [];
     var lastCritiqueReport = 'まだ会話生成前のため待機中（生成時に5候補を8層文脈＆文法チェックで吟味します）';
 
+    // ==========================================
+    // ★入力優先制御（フォーカス中・タイピング中は裏側学習を完全ポーズする状態管理）
+    // ==========================================
+    var isInputFocused = false;
+    var isTypingActive = false;
+    var isComposingIME = false;
+    var allowPostSendLearning = false;
+    var typingIdleTimer = null;
+
+    function shouldPauseBackgroundLearning() {
+      if (isTypingActive || isComposingIME) return true;
+      if (isInputFocused && !allowPostSendLearning) return true;
+      return false;
+    }
+
+    function markUserTypingActivity() {
+      isTypingActive = true;
+      allowPostSendLearning = false;
+      if (typingIdleTimer) {
+        clearTimeout(typingIdleTimer);
+      }
+      typingIdleTimer = setTimeout(function() {
+        isTypingActive = false;
+      }, IDLE_RESUME_DELAY_MS);
+    }
+
+    // ==========================================
+    // 永続メモリデータ構造
+    // ==========================================
     var memoryStore = {
       topics: [],
       corpusText: '',
@@ -501,12 +532,12 @@
       '</svg>';
 
     // ==========================================
-    // 安全なJSONパーサー＆通信ヘルパー（非JSON応答による起動エラーを完全防止）
+    // 安全なJSONパース＆通信ヘルパー（非JSONエラー対策）
     // ==========================================
     function safeParseJsonText(rawText) {
       if (!rawText || typeof rawText !== 'string') return null;
-      var trimmed = rawText.trim();
-      if (!trimmed || (trimmed.charAt(0) !== '{' && trimmed.charAt(0) !== '[')) {
+      var trimmed = rawText.replace(/^\uFEFF/, '').trim();
+      if (!trimmed || (trimmed[0] !== '{' && trimmed[0] !== '[')) {
         return null;
       }
       try {
@@ -519,11 +550,11 @@
     async function safeFetchJson(url, options) {
       try {
         var res = await fetch(url, options || {});
-        var text = await res.text();
-        var data = safeParseJsonText(text);
-        return { ok: res.ok && data !== null, status: res.status, data: data };
+        var rawText = await res.text();
+        var data = safeParseJsonText(rawText);
+        return { ok: res.ok, status: res.status, data: data, rawText: rawText };
       } catch (e) {
-        return { ok: false, status: 0, data: null };
+        return { ok: false, status: 0, data: null, rawText: '' };
       }
     }
 
@@ -551,36 +582,37 @@
       }
     }
 
-    // ==========================================
-    // 制作者専用設定パネル（画面内認証・alert/confirm不使用）
-    // ==========================================
     function toggleGitHubConfigPanel() {
       if (githubConfigPanel.style.display === 'block') {
         githubConfigPanel.style.display = 'none';
         return;
       }
-      githubConfigPanel.style.display = 'block';
-      if (isCreatorUnlocked) {
-        document.getElementById('creator-lock-view').style.display = 'none';
-        document.getElementById('creator-unlocked-view').style.display = 'block';
+      var lockView = document.getElementById('creator-lock-view');
+      var unlockedView = document.getElementById('creator-unlocked-view');
+      var pwMsg = document.getElementById('creator-pw-msg');
+      if (pwMsg) pwMsg.textContent = '';
+
+      if (!isCreatorUnlocked) {
+        lockView.style.display = 'block';
+        unlockedView.style.display = 'none';
       } else {
-        document.getElementById('creator-lock-view').style.display = 'block';
-        document.getElementById('creator-unlocked-view').style.display = 'none';
-        document.getElementById('creator-pw-msg').textContent = '';
+        lockView.style.display = 'none';
+        unlockedView.style.display = 'block';
       }
+      githubConfigPanel.style.display = 'block';
     }
 
     function verifyCreatorPassword() {
       var inputPw = document.getElementById('creator-pw-input').value;
-      var msgEl = document.getElementById('creator-pw-msg');
-      if (inputPw === CREATOR_PASSWORD) {
-        isCreatorUnlocked = true;
-        document.getElementById('creator-pw-input').value = '';
-        document.getElementById('creator-lock-view').style.display = 'none';
-        document.getElementById('creator-unlocked-view').style.display = 'block';
-      } else {
-        msgEl.textContent = '❌ パスワードが違います。';
+      var pwMsg = document.getElementById('creator-pw-msg');
+      if (inputPw !== CREATOR_PASSWORD) {
+        pwMsg.textContent = '❌ パスワードが違います。';
+        return;
       }
+      isCreatorUnlocked = true;
+      document.getElementById('creator-pw-input').value = '';
+      document.getElementById('creator-lock-view').style.display = 'none';
+      document.getElementById('creator-unlocked-view').style.display = 'block';
     }
 
     function saveNewGitHubToken() {
@@ -606,35 +638,11 @@
         .trim();
     }
 
-    // ==========================================
-    // 日常会話.txt 専用の整形クリーナー（見出し・区切り線を除き純粋な会話・品詞語彙を抽出）
-    // ==========================================
-    function cleanDailyChatText(rawText) {
-      if (!rawText) return '';
-      var lines = rawText.split(/\r?\n/);
-      var cleanedLines = [];
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (!line) continue;
-        if (/^[=\-_*]{3,}$/.test(line)) continue;
-        if (/^【[^】]+】$/.test(line)) continue;
-        line = line.replace(/^・[^：:]+[：:]/, '').replace(/^〜/, '').trim();
-        if (line.length >= 2) {
-          cleanedLines.push(line);
-        }
-      }
-      return cleanedLines.join('\n');
-    }
-
     function utf8ToBase64(str) {
       return btoa(unescape(encodeURIComponent(str)));
     }
     function base64ToUtf8(b64) {
-      try {
-        return decodeURIComponent(escape(atob(b64.replace(/\s+/g, ''))));
-      } catch (e) {
-        return '';
-      }
+      return decodeURIComponent(escape(atob(b64.replace(/\n/g, ''))));
     }
 
     function inspectOwnHealth() {
@@ -704,7 +712,7 @@
         return {
           status: 'healthy',
           diagnosis: diagnosis,
-          message: '自己診断の結果、' + TRANSFORMER_LAYERS + '層Transformerの重み・言葉吟味層・会話エポック学習すべて正常（不具合0件）です☕ 現在コードVersion.' + SELF_CODE_VERSION + 'で安定稼働中！'
+          message: '自己診断の結果、' + TRANSFORMER_LAYERS + '層Transformerの重み・言葉吟味層・日常会話.txtエポック学習すべて正常（不具合0件）です☕ 現在コードVersion.' + SELF_CODE_VERSION + 'で安定稼働中！'
         };
       }
 
@@ -720,13 +728,13 @@
           'Content-Type': 'application/json'
         };
 
-        var getResult = await safeFetchJson(apiUrl + '?nocache=' + Date.now(), { headers: headers, cache: 'no-store' });
-        if (!getResult.ok || !getResult.data || !getResult.data.content) {
+        var getRes = await safeFetchJson(apiUrl + '?nocache=' + Date.now(), { headers: headers, cache: 'no-store' });
+        if (!getRes.ok || !getRes.data) {
           isSelfRepairingCode = false;
-          return { status: 'fetch_error', diagnosis: diagnosis, message: 'GitHub上の自分のindex.html取得に失敗しました（ステータス: ' + getResult.status + '）' };
+          return { status: 'fetch_error', diagnosis: diagnosis, message: 'GitHub上の自分のindex.html取得に失敗しました（ステータス: ' + getRes.status + '）' };
         }
 
-        var fileInfo = getResult.data;
+        var fileInfo = getRes.data;
         var currentHtml = base64ToUtf8(fileInfo.content);
 
         var nextVersion = SELF_CODE_VERSION + 1;
@@ -749,7 +757,7 @@
 
         var patchedHtml = currentHtml.replace(pattern, replacementBlock);
 
-        var putResult = await safeFetchJson(apiUrl, {
+        var putRes = await safeFetchJson(apiUrl, {
           method: 'PUT',
           headers: headers,
           body: JSON.stringify({
@@ -760,7 +768,7 @@
         });
 
         isSelfRepairingCode = false;
-        if (putResult.ok) {
+        if (putRes.ok) {
           SELF_CODE_VERSION = nextVersion;
           TRANSFORMER_LAYERS = diagnosis.fixes.newLayers;
           RECENT_BLOCK_WINDOW = diagnosis.fixes.newBlockWindow;
@@ -775,7 +783,7 @@
             message: '🛠️ 自分自身の `index.html` を自己診断し、GitHubへ直接コード修正コミット（v' + nextVersion + '）を完了しました！\n・修正内容：' + noteText
           };
         } else {
-          return { status: 'put_error', diagnosis: diagnosis, message: 'GitHubへのindex.html自己修正コミット時にエラーが発生しました（' + putResult.status + '）' };
+          return { status: 'put_error', diagnosis: diagnosis, message: 'GitHubへのindex.html自己修正コミット時にエラーが発生しました（' + putRes.status + '）' };
         }
       } catch (e) {
         isSelfRepairingCode = false;
@@ -817,18 +825,20 @@
 
           var sha = null;
           var currentRemoteText = '';
-          var getResult = await safeFetchJson(apiUrl + '?nocache=' + Date.now() + '_' + Math.random(), {
+          var getRes = await safeFetchJson(apiUrl + '?nocache=' + Date.now() + '_' + Math.random(), {
             headers: headers,
             cache: 'no-store'
           });
 
-          if (getResult.ok && getResult.data) {
-            sha = getResult.data.sha;
-            if (getResult.data.content) {
-              currentRemoteText = base64ToUtf8(getResult.data.content);
+          if (getRes.ok && getRes.data) {
+            var fileInfo = getRes.data;
+            sha = fileInfo.sha;
+            if (fileInfo.content) {
+              currentRemoteText = base64ToUtf8(fileInfo.content);
             }
-          } else if (getResult.status === 401 || getResult.status === 403) {
-            ghSyncStatus = 'トークン無効/権限不足(' + getResult.status + ')';
+          } else if (getRes.status === 401 || getRes.status === 403) {
+            var authMsg = (getRes.data && getRes.data.message) ? getRes.data.message : getRes.status;
+            ghSyncStatus = 'トークン無効/権限不足(' + authMsg + ')';
             updateStatusDisplay();
             break;
           }
@@ -845,20 +855,21 @@
           };
           if (sha) putBody.sha = sha;
 
-          var putResult = await safeFetchJson(apiUrl, {
+          var putRes = await safeFetchJson(apiUrl, {
             method: 'PUT',
             headers: headers,
             body: JSON.stringify(putBody)
           });
 
-          if (putResult.ok) {
+          if (putRes.ok) {
             success = true;
             break;
-          } else if (putResult.status === 409 || putResult.status === 422) {
+          } else if (putRes.status === 409 || putRes.status === 422) {
             await new Promise(function(r) { setTimeout(r, 1200); });
             continue;
           } else {
-            ghSyncStatus = 'GitHubエラー(' + putResult.status + ')';
+            var putErrMsg = (putRes.data && putRes.data.message) ? putRes.data.message : putRes.status;
+            ghSyncStatus = 'GitHubエラー(' + putErrMsg + ')';
             updateStatusDisplay();
             break;
           }
@@ -955,7 +966,7 @@
     }
 
     // ==========================================
-    // ★日常会話.txt ＋ 内蔵会話コーパス ＋ 実際のチャット履歴を結合
+    // ★日常会話.txt ＋ 基礎会話コーパス ＋ 実際のチャット履歴を結合してエポック学習用テキストを生成
     // ==========================================
     function buildChatCorpusText() {
       var recentChatLines = (memoryStore.chatHistory || [])
@@ -963,10 +974,11 @@
         .map(function(item) { return item.text.replace(/☕/g, '').trim(); })
         .filter(function(t) { return t.length >= 2 && t.indexOf('```') === -1; });
 
-      var parts = [BASE_CHAT_CORPUS];
+      var parts = [];
       if (memoryStore.dailyChatCorpusText && memoryStore.dailyChatCorpusText.trim().length > 0) {
         parts.push(memoryStore.dailyChatCorpusText.trim());
       }
+      parts.push(BASE_CHAT_CORPUS);
       if (recentChatLines.length > 0) {
         parts.push(recentChatLines.join('\n'));
       }
@@ -974,28 +986,24 @@
     }
 
     // ==========================================
-    // 8層Deep Transformer + LayerNorm + FFN + 大容量語彙厳選 + 言葉吟味層
+    // 8層 Deep Transformer + LayerNorm + FFN + 会話語彙優先厳選 + 言葉吟味層（Output Critique Layer）
     // ==========================================
-    function CafeUltraTransformer(text, previousWeights, chatCorpusText, savedChatCursor) {
+    function CafeUltraTransformer(text, previousWeights, chatCorpusText, initialChatCursor) {
       var chatText = chatCorpusText || buildChatCorpusText();
-      var fullKnowledge = text || '';
-      var sampledKnowledge = fullKnowledge.length > 90000
-        ? fullKnowledge.slice(0, 25000) + '\n' + fullKnowledge.slice(-65000)
-        : fullKnowledge;
+      var mergedForTraining = chatText + '\n' + (text || '').slice(-60000);
+      var rawTokens = tokenizeJapanese(mergedForTraining);
+      var chatOnlyTokens = tokenizeJapanese(chatText);
 
-      var chatTokens = tokenizeJapanese(chatText);
-      var knowledgeTokens = tokenizeJapanese(sampledKnowledge);
-      var rawTokens = chatTokens.concat(knowledgeTokens);
-
-      // 日常会話コーパス内の単語に+50の優先重みを付与し、20万語以上の知識の中でも会話語彙を確実に保持
       var freqMap = {};
-      for (var i = 0; i < knowledgeTokens.length; i++) {
-        var kTok = knowledgeTokens[i];
-        freqMap[kTok] = (freqMap[kTok] || 0) + 1;
+      for (var i = 0; i < rawTokens.length; i++) {
+        var tk = rawTokens[i];
+        freqMap[tk] = (freqMap[tk] || 0) + 1;
       }
-      for (var j = 0; j < chatTokens.length; j++) {
-        var cTok = chatTokens[j];
-        freqMap[cTok] = (freqMap[cTok] || 0) + 50;
+
+      // 20万語以上の巨大な知識が入ってきても会話単語が追い出されないよう優先重み(+50)を付与
+      for (var c = 0; c < chatOnlyTokens.length; c++) {
+        var ctk = chatOnlyTokens[c];
+        freqMap[ctk] = (freqMap[ctk] || 0) + 50;
       }
 
       var sortedTokens = Object.keys(freqMap).sort(function(a, b) {
@@ -1016,14 +1024,13 @@
         return (self.tokenToId[tok] !== undefined) ? self.tokenToId[tok] : 0;
       });
 
-      this.chatData = chatTokens.map(function(tok) {
+      this.chatData = chatOnlyTokens.map(function(tok) {
         return (self.tokenToId[tok] !== undefined) ? self.tokenToId[tok] : 0;
       });
 
-      // 保存されていたカーソル位置を引き継ぎ、サイクルをまたいで確実に1周完走させる
-      var maxValidCursor = Math.max(0, this.chatData.length - CONTEXT_SIZE - 1);
-      this.chatEpochCursor = (typeof savedChatCursor === 'number' && savedChatCursor >= 0 && savedChatCursor <= maxValidCursor)
-        ? savedChatCursor
+      var maxStart = Math.max(0, this.chatData.length - CONTEXT_SIZE - 1);
+      this.chatEpochCursor = (typeof initialChatCursor === 'number' && initialChatCursor >= 0 && initialChatCursor <= maxStart)
+        ? initialChatCursor
         : 0;
 
       this.numLayers = TRANSFORMER_LAYERS;
@@ -1064,6 +1071,7 @@
     CafeUltraTransformer.prototype.exportWeights = function() {
       return {
         numLayers: this.numLayers,
+        embedDim: EMBED_DIM,
         vocab: this.vocab,
         tokenEmbed: this.tokenEmbed,
         posEmbed: this.posEmbed,
@@ -1080,7 +1088,7 @@
       if (saved.layers && Array.isArray(saved.layers)) {
         var copyCount = Math.min(this.layers.length, saved.layers.length);
         for (var l = 0; l < copyCount; l++) {
-          if (saved.layers[l] && saved.layers[l].Wq && saved.layers[l].Wq.length === EMBED_DIM) {
+          if (saved.layers[l] && saved.layers[l].Wq && saved.layers[l].Wq.length === EMBED_DIM && saved.layers[l].Wq[0].length === EMBED_DIM) {
             this.layers[l] = saved.layers[l];
           }
         }
@@ -1247,15 +1255,9 @@
       return this.trainOnSequence(inputIds, targetId, 1.0);
     };
 
-    // ==========================================
-    // ★日常会話.txt＋日常会話コーパスを先頭から末尾まで順番にエポック回し（反復学習）するステップ
-    // ==========================================
     CafeUltraTransformer.prototype.trainChatEpochStep = function() {
       if (!this.chatData || this.chatData.length <= CONTEXT_SIZE + 1) return { loss: 0, epochCompleted: false };
       var maxStart = this.chatData.length - CONTEXT_SIZE - 1;
-      if (this.chatEpochCursor > maxStart) {
-        this.chatEpochCursor = 0;
-      }
       var startIdx = this.chatEpochCursor;
       var inputIds = this.chatData.slice(startIdx, startIdx + CONTEXT_SIZE);
       var targetId = this.chatData[startIdx + CONTEXT_SIZE];
@@ -1273,38 +1275,8 @@
     };
 
     // ==========================================
-    // ★8層Transformerの意味表現ベクトル抽出＆言葉吟味層（Output Critique Layer）
+    // ★候補1件の文章生成＋第7・第8層の隠れ表現抽出
     // ==========================================
-    CafeUltraTransformer.prototype.getSentenceHiddenVector = function(text) {
-      var tokens = tokenizeJapanese(text);
-      var self = this;
-      var ids = tokens.map(function(t) { return self.tokenToId[t] !== undefined ? self.tokenToId[t] : 0; });
-      if (ids.length === 0) ids = [1];
-      var ctx = ids.slice(-CONTEXT_SIZE);
-      var res = this.forward(ctx);
-      var topLayerVec = res.lastHidden;
-      var subLayerVec = (res.hiddenStates && res.hiddenStates.length >= 2)
-        ? res.hiddenStates[res.hiddenStates.length - 2][res.seqLen - 1]
-        : topLayerVec;
-      return topLayerVec.map(function(v, idx) {
-        return v * 0.7 + (subLayerVec[idx] || 0) * 0.3;
-      });
-    };
-
-    CafeUltraTransformer.prototype.cosineSimilarity = function(vecA, vecB) {
-      if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
-      var dot = 0;
-      var normA = 0;
-      var normB = 0;
-      for (var i = 0; i < vecA.length; i++) {
-        dot += vecA[i] * vecB[i];
-        normA += vecA[i] * vecA[i];
-        normB += vecB[i] * vecB[i];
-      }
-      var denom = Math.sqrt(normA) * Math.sqrt(normB);
-      return denom > 1e-8 ? (dot / denom) : 0;
-    };
-
     CafeUltraTransformer.prototype.generateSingleCandidate = function(seedText, maxTokens, temperature) {
       var tokens = tokenizeJapanese(seedText);
       var self = this;
@@ -1313,30 +1285,24 @@
 
       var generated = [];
       var singleHiraganaStreak = 0;
+      var lastLayer8Vec = null;
 
       for (var step = 0; step < maxTokens; step++) {
         var ctx = ids.slice(-CONTEXT_SIZE);
         var res = this.forward(ctx);
+        lastLayer8Vec = res.lastHidden;
         var recentBlockedIds = ids.slice(-RECENT_BLOCK_WINDOW);
 
         var scaledLogits = res.logits.map(function(l, idx) {
           var tok = self.idToToken[idx];
           if (idx === 0 || !tok || tok === '\n') return -1e9;
-
-          if (recentBlockedIds.indexOf(idx) !== -1) {
-            return -1e9;
-          }
-
-          if (step === 0 && /^[。、！？]$/.test(tok)) {
-            return -1e9;
-          }
+          if (recentBlockedIds.indexOf(idx) !== -1) return -1e9;
+          if (step === 0 && /^[。、！？]$/.test(tok)) return -1e9;
 
           var isSingleHiragana = /^[ぁ-ん]$/.test(tok);
-          if (isSingleHiragana && singleHiraganaStreak >= 1) {
-            return -1e9;
-          }
+          if (isSingleHiragana && singleHiraganaStreak >= 1) return -1e9;
 
-          var bonus = (tok.length >= 2) ? 0.85 : 0.0;
+          var bonus = (tok.length >= 2) ? 0.78 : 0.0;
           return (l + bonus) / temperature;
         });
 
@@ -1361,85 +1327,106 @@
         }
 
         generated.push(word);
-        if ((word === '。' || word === '！' || word === '？') && generated.length >= 8) break;
+        if ((word === '。' || word === '！' || word === '？') && generated.length >= 7) break;
       }
 
       var resultText = generated.join('');
       if (resultText && !/[。！？]$/.test(resultText)) {
         resultText += '！';
       }
-      return resultText;
+      return { text: resultText, layer8Vec: lastLayer8Vec };
     };
 
-    CafeUltraTransformer.prototype.critiqueAndSelectBestResponse = function(seedText, candidates) {
-      var seedVec = this.getSentenceHiddenVector(seedText);
-      var bestCandidate = candidates[0] || 'うんうん、その話もっと聞かせてほしいな！';
-      var bestScore = -9999;
-      var bestDetail = '';
+    // ==========================================
+    // ★8層文脈一致度計算（入力文脈と出力第8層ベクトルのコサイン類似度）
+    // ==========================================
+    CafeUltraTransformer.prototype.computeContextAlignment = function(seedText, outLayer8Vec) {
+      if (!outLayer8Vec) return 0;
+      var seedTokens = tokenizeJapanese(seedText);
+      var self = this;
+      var seedIds = seedTokens.map(function(t) { return self.tokenToId[t] !== undefined ? self.tokenToId[t] : 0; }).slice(-CONTEXT_SIZE);
+      if (seedIds.length === 0) return 0;
 
-      for (var i = 0; i < candidates.length; i++) {
-        var cand = candidates[i];
-        if (!cand) continue;
+      var seedRes = this.forward(seedIds);
+      var inVec = seedRes.lastHidden;
+      var dot = 0;
+      var normA = 0;
+      var normB = 0;
+      for (var d = 0; d < EMBED_DIM; d++) {
+        dot += inVec[d] * outLayer8Vec[d];
+        normA += inVec[d] * inVec[d];
+        normB += outLayer8Vec[d] * outLayer8Vec[d];
+      }
+      if (normA === 0 || normB === 0) return 0;
+      return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    };
 
+    // ==========================================
+    // ★言葉吟味層（Output Critique & Reranking Layer）
+    // 5つの候補を生成し、文法破綻・助詞連続・繰り返しを検知して最適解を選抜する
+    // ==========================================
+    CafeUltraTransformer.prototype.critiqueAndSelectBestResponse = function(seedText, maxTokens) {
+      var temperatures = [0.62, 0.68, 0.74, 0.80, 0.86];
+      var scoredCandidates = [];
+
+      for (var i = 0; i < CANDIDATE_COUNT; i++) {
+        var temp = temperatures[i % temperatures.length];
+        var cand = this.generateSingleCandidate(seedText, maxTokens, temp);
+        var txt = cand.text;
         var score = 50;
         var notes = [];
 
-        var candVec = this.getSentenceHiddenVector(cand);
-        var sim = this.cosineSimilarity(seedVec, candVec);
-        var simBonus = Math.round(Math.max(0, sim) * 30);
-        score += simBonus;
-        notes.push('文脈一致+' + simBonus);
-
-        if (/(?:がの|をに|はが|にを|へを|での|とが|もを|がを|をは)/.test(cand)) {
-          score -= 35;
-          notes.push('助詞重複検知-35');
-        }
-        if (/(?:[がのをにへとはもでや]{3,})/.test(cand)) {
-          score -= 40;
-          notes.push('助詞羅列検知-40');
+        // 1. 長さの自然さチェック
+        if (txt.length < 6) {
+          score -= 25;
+          notes.push('短すぎ減点');
+        } else if (txt.length >= 10 && txt.length <= 42) {
+          score += 14;
+          notes.push('適切な文長');
         }
 
-        if (/(.{2,6})\1/.test(cand)) {
-          score -= 35;
-          notes.push('反復ループ検知-35');
+        // 2. 不自然な助詞連続の検知（「がの」「をに」「はが」「にを」など）
+        if (/(?:がの|をに|はが|にを|での|への|からを|までが)/.test(txt)) {
+          score -= 30;
+          notes.push('助詞連続検知');
         }
 
-        var cleanBody = cand.replace(/[。、！？!?\s]/g, '');
-        if (cleanBody.length < 4) {
-          score -= 50;
-          notes.push('短文破綻-50');
+        // 3. 同じ2文字以上のフレーズの重複ループ検知
+        var dupMatch = txt.match(/(.{2,5})\1/);
+        if (dupMatch) {
+          score -= 25;
+          notes.push('反復ループ検知');
         }
 
-        if (/(?:だよ|だね|しよう|かな|ね！|よ！|うれしいな|楽しいね|ほしいな|任せてね|思うよ|どう？|最高だね|大切だよ)[！!？?。]?$/.test(cand)) {
-          score += 22;
-          notes.push('自然語尾+22');
+        // 4. 自然な会話らしい結び・相づち表現の加点
+        if (/(?:だね|だよ|しよう|かな|うれしい|楽しい|わかる|すごい|ありがとう|いいね|おう|ね！|よ！)/.test(txt)) {
+          score += 12;
+          notes.push('会話表現加点');
         }
 
-        if (cand.length >= 8 && cand.length <= 36) {
-          score += 10;
-          notes.push('適正長+10');
-        }
+        // 5. 第8層文脈ベクトル一致度の反映
+        var sim = this.computeContextAlignment(seedText, cand.layer8Vec);
+        var simScore = Math.round(sim * 20);
+        score += simScore;
+        notes.push('8層文脈一致:' + simScore);
 
-        if (score > bestScore) {
-          bestScore = score;
-          bestCandidate = cand;
-          bestDetail = '候補' + candidates.length + '案から厳選｜評価スコア:' + score + '点（' + notes.join(' / ') + '）｜採用:「' + cand + '」';
-        }
+        scoredCandidates.push({
+          text: txt,
+          score: score,
+          temp: temp,
+          notes: notes.join('/')
+        });
       }
 
-      lastCritiqueReport = bestDetail;
-      return bestCandidate;
+      scoredCandidates.sort(function(a, b) { return b.score - a.score; });
+      var winner = scoredCandidates[0];
+      lastCritiqueReport = '選抜候補(スコア' + winner.score + '点 / T=' + winner.temp + '): 「' + winner.text + '」[' + winner.notes + ']';
+      return winner.text;
     };
 
     CafeUltraTransformer.prototype.generateChatResponse = function(seedText, maxTokens) {
       if (!maxTokens) maxTokens = 22;
-      var temperatures = [0.65, 0.72, 0.78, 0.85, 0.90];
-      var candidates = [];
-      for (var i = 0; i < CANDIDATE_COUNT; i++) {
-        var temp = temperatures[i % temperatures.length];
-        candidates.push(this.generateSingleCandidate(seedText, maxTokens, temp));
-      }
-      return this.critiqueAndSelectBestResponse(seedText, candidates);
+      return this.critiqueAndSelectBestResponse(seedText, maxTokens);
     };
 
     // ==========================================
@@ -1605,21 +1592,20 @@
 
     async function fetchRandomWebArticles() {
       var randomUrl = 'https://ja.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=' + FETCH_ARTICLE_COUNT + '&prop=extracts&exintro&explaintext&format=json&origin=*';
-      var fetchRes = await safeFetchJson(randomUrl);
+      var resObj = await safeFetchJson(randomUrl);
+      var data = resObj.data;
+      var pages = (data && data.query && data.query.pages) ? data.query.pages : {};
+      var keys = Object.keys(pages);
+
       var structuredBlocks = [];
       var titles = [];
-
-      if (fetchRes.ok && fetchRes.data) {
-        var pages = (fetchRes.data.query && fetchRes.data.query.pages) ? fetchRes.data.query.pages : {};
-        var keys = Object.keys(pages);
-        for (var i = 0; i < keys.length; i++) {
-          var pId = keys[i];
-          var title = pages[pId].title;
-          var cleanBody = cleanWikipediaText(pages[pId].extract);
-          if (cleanBody.length > 12) {
-            titles.push(title);
-            structuredBlocks.push('【テーマ：' + title + '】\n・' + title + '：' + cleanBody);
-          }
+      for (var i = 0; i < keys.length; i++) {
+        var pId = keys[i];
+        var title = pages[pId].title;
+        var cleanBody = cleanWikipediaText(pages[pId].extract);
+        if (cleanBody.length > 12) {
+          titles.push(title);
+          structuredBlocks.push('【テーマ：' + title + '】\n・' + title + '：' + cleanBody);
         }
       }
 
@@ -1633,8 +1619,9 @@
 
     async function fetchTopicFromWikipedia(topicQuery) {
       var exactUrl = 'https://ja.wikipedia.org/w/api.php?action=query&titles=' + encodeURIComponent(topicQuery) + '&redirects=1&prop=extracts&exintro&explaintext&format=json&origin=*';
-      var fetchRes = await safeFetchJson(exactUrl);
-      var pages = (fetchRes.ok && fetchRes.data && fetchRes.data.query && fetchRes.data.query.pages) ? fetchRes.data.query.pages : {};
+      var resObj = await safeFetchJson(exactUrl);
+      var data = resObj.data;
+      var pages = (data && data.query && data.query.pages) ? data.query.pages : {};
       var keys = Object.keys(pages);
 
       var hasValidExact = false;
@@ -1647,8 +1634,9 @@
 
       if (!hasValidExact) {
         var searchUrl = 'https://ja.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=' + encodeURIComponent(topicQuery) + '&gsrlimit=2&prop=extracts&exintro&explaintext&format=json&origin=*';
-        fetchRes = await safeFetchJson(searchUrl);
-        pages = (fetchRes.ok && fetchRes.data && fetchRes.data.query && fetchRes.data.query.pages) ? fetchRes.data.query.pages : {};
+        resObj = await safeFetchJson(searchUrl);
+        data = resObj.data;
+        pages = (data && data.query && data.query.pages) ? data.query.pages : {};
         keys = Object.keys(pages);
       }
 
@@ -1757,8 +1745,7 @@
           '```javascript\n' +
           '// カフェ・LLMが作成したJavaScriptサンプル\n' +
           'function sayHello(name) {\n' +
-          '  var msgEl = document.getElementById("msg");\n' +
-          '  if (msgEl) msgEl.textContent = "こんにちは、" + name + "さん！☕";\n' +
+          '  console.log("こんにちは、" + name + "さん！☕");\n' +
           '}\n' +
           'sayHello("ともとも2");\n' +
           '```';
@@ -1857,7 +1844,7 @@
 
       if (/^(こんにちは|こんにちわ|こんばんは|こんばんわ|おはよう|おはようございます|やあ|ハロー|はじめまして|よろしく|おっす|ちわ)/.test(normalized)) {
         var pressureNote = (trimmed.indexOf('圧') !== -1) ? '（ビシッ！と背筋を伸ばしてご挨拶するね！☕）\n' : '';
-        var naturalGreetingFollow = llmModel ? llmModel.generateChatResponse(trimmed, 16) : '今日もゆっくりおしゃべりしようね！';
+        var naturalGreetingFollow = llmModel ? llmModel.generateChatResponse(trimmed, 14) : '今日もゆっくりおしゃべりしようね！';
         return {
           text: pressureNote + userNamePrefix + naturalGreetingFollow + ' ☕',
           imageUrl: null
@@ -2081,18 +2068,16 @@
       var previewText = memoryStore.corpusText.slice(-3000);
       var prefixNote = memoryStore.corpusText.length > 3000 ? '（※最新の3,000文字を抜粋表示中）\n\n' : '';
       var vocabSize = llmModel ? llmModel.vocabSize : 0;
+      var dailyChatChars = (memoryStore.dailyChatCorpusText || '').length;
       var userName = (memoryStore.userProfile && memoryStore.userProfile.name) || '未登録';
       var userLikes = (memoryStore.userProfile && memoryStore.userProfile.likes.length > 0) ? memoryStore.userProfile.likes.join(' / ') : '未登録';
-      var dailyChatChars = memoryStore.dailyChatCorpusText ? memoryStore.dailyChatCorpusText.length.toLocaleString() : '0';
 
       knowledgePanel.innerHTML =
-        '<strong>🧠 ' + TRANSFORMER_LAYERS + '層Deep Transformer（言葉吟味層・埋め込み' + EMBED_DIM + '次元・直近' + RECENT_BLOCK_WINDOW + '語ブロック）状態:</strong><br>' +
+        '<strong>🧠 ' + TRANSFORMER_LAYERS + '層Transformer（' + EMBED_DIM + '次元・言葉吟味層・会話語彙優先厳選）状態:</strong><br>' +
+        '・最新言葉吟味層レポート: <b>' + lastCritiqueReport + '</b><br>' +
+        '・日常会話.txt 読み込み量: <b>' + dailyChatChars.toLocaleString() + '文字</b>（裏側エポック: <b>' + (memoryStore.chatEpochCount || 0) + '周完走</b>）<br>' +
+        '・厳選語彙辞書数: <b>' + vocabSize + '語</b>（上限: ' + MAX_VOCAB_SIZE + '語 / 会話語彙優先保持モード）<br>' +
         '・最新コード診断ログ: <b>' + LAST_SELF_REPAIR_NOTE + '</b>（v' + SELF_CODE_VERSION + '）<br>' +
-        '・言葉吟味層の最新選別レポート: <b>' + lastCritiqueReport + '</b><br>' +
-        '・日常会話.txt 読み込み量: <b>' + dailyChatChars + '文字</b>（裏側エポック反復学習中）<br>' +
-        '・日常会話エポック反復学習数: <b>' + (memoryStore.chatEpochCount || 0) + '周（エポック）完走</b><br>' +
-        '・厳選単語トークナイザー語彙数: <b>' + vocabSize + '語</b>（上限: ' + MAX_VOCAB_SIZE + '語 / 会話語彙優先重み付き）<br>' +
-        '・自己進化回数: <b>' + (memoryStore.evolutionCount || 0) + '回</b>（GitHub knowledge.txt & index.html 連動）<br>' +
         '・長期パーソナル記憶: 名前=<b>' + userName + '</b> / 好み=<b>' + userLikes + '</b><br>' +
         '・knowledge.txt総量: <b>' + memoryStore.corpusText.length.toLocaleString() + '文字</b><br><br>' +
         prefixNote + (previewText || 'まだ学習データがありません');
@@ -2102,15 +2087,15 @@
       var token = getSavedToken();
       if (token) {
         var apiUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + GITHUB_TARGET_PATH + '?nocache=' + Date.now();
-        var res = await safeFetchJson(apiUrl, {
+        var resObj = await safeFetchJson(apiUrl, {
           headers: {
             'Authorization': 'Bearer ' + token,
             'Accept': 'application/vnd.github+json'
           },
           cache: 'no-store'
         });
-        if (res.ok && res.data && res.data.content) {
-          return base64ToUtf8(res.data.content).trim();
+        if (resObj.ok && resObj.data && resObj.data.content) {
+          return base64ToUtf8(resObj.data.content).trim();
         }
       }
 
@@ -2118,30 +2103,43 @@
         var rawRes = await fetch(GITHUB_KNOWLEDGE_FILE + '?t=' + Date.now());
         if (rawRes.ok) {
           var text = await rawRes.text();
-          if (text && text.trim().length > 5 && text.trim().charAt(0) !== '<') {
-            return text.trim();
-          }
+          if (text && text.trim().length > 5 && text.trim()[0] !== '<') return text.trim();
         }
       } catch (e2) {}
       return '';
     }
 
-    // ==========================================
-    // ★新設：GitHub上の「日常会話.txt」を読み込む関数
-    // ==========================================
+    function cleanDailyChatText(rawText) {
+      if (!rawText) return '';
+      return rawText
+        .split('\n')
+        .map(function(line) { return line.trim(); })
+        .filter(function(line) {
+          if (!line) return false;
+          if (/^=+$/.test(line)) return false;
+          if (/^【[^】]+】$/.test(line)) return false;
+          return true;
+        })
+        .map(function(line) {
+          return line.replace(/^・[^：]+：/, '').replace(/^〜/, '');
+        })
+        .join('\n');
+    }
+
     async function fetchGitHubDailyChatFile() {
       var token = getSavedToken();
       if (token) {
-        var apiUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + encodeURIComponent(GITHUB_DAILY_CHAT_PATH) + '?nocache=' + Date.now();
-        var res = await safeFetchJson(apiUrl, {
+        var encodedPath = encodeURIComponent(GITHUB_DAILY_CHAT_PATH);
+        var apiUrl = 'https://api.github.com/repos/' + GITHUB_OWNER + '/' + GITHUB_REPO + '/contents/' + encodedPath + '?nocache=' + Date.now();
+        var resObj = await safeFetchJson(apiUrl, {
           headers: {
             'Authorization': 'Bearer ' + token,
             'Accept': 'application/vnd.github+json'
           },
           cache: 'no-store'
         });
-        if (res.ok && res.data && res.data.content) {
-          return cleanDailyChatText(base64ToUtf8(res.data.content));
+        if (resObj.ok && resObj.data && resObj.data.content) {
+          return cleanDailyChatText(base64ToUtf8(resObj.data.content));
         }
       }
 
@@ -2149,7 +2147,7 @@
         var rawRes = await fetch(encodeURI(GITHUB_DAILY_CHAT_FILE) + '?t=' + Date.now());
         if (rawRes.ok) {
           var text = await rawRes.text();
-          if (text && text.trim().length > 5 && text.trim().charAt(0) !== '<') {
+          if (text && text.trim().length > 5 && text.trim()[0] !== '<') {
             return cleanDailyChatText(text);
           }
         }
@@ -2158,7 +2156,7 @@
     }
 
     // ==========================================
-    // ★知識学習 ＋ 日常会話.txt裏側エポック回し統合ループ
+    // ★知識学習 ＋ 日常会話.txt裏側エポック回し統合ループ（入力中完全ポーズ＆軽量間隔制御版）
     // ==========================================
     function trainAndGrowMemory(newText, newTitles, announceMessage, isSilentBackground, onComplete) {
       if (isLearningNow) {
@@ -2185,13 +2183,25 @@
       var nextModel = new CafeUltraTransformer(memoryStore.corpusText, prevWeights, currentChatCorpus, memoryStore.chatEpochCursor || 0);
       var step = 0;
       var chatStep = 0;
-      // 1回の学習サイクルで必ず日常会話コーパス全体を1周（1エポック）以上完走させる動的ステップ数
       var dynamicChatSteps = Math.max(CHAT_EPOCH_STEPS, (nextModel.chatData ? nextModel.chatData.length : 0) + 16);
+      var wasPausedLastTick = false;
 
       function fastTrainLoop() {
+        // 入力欄フォーカス中・タイピング中・日本語変換中は行列計算を行わず完全に一時停止
+        if (shouldPauseBackgroundLearning()) {
+          if (!wasPausedLastTick) {
+            wasPausedLastTick = true;
+            trainStatusEl.textContent = '⏸️ 入力中のためエポック学習を一時停止中（サクサク入力優先モード）';
+          }
+          setTimeout(fastTrainLoop, 250);
+          return;
+        }
+        wasPausedLastTick = false;
+
         if (step >= TOTAL_STEPS && chatStep >= dynamicChatSteps) {
           llmModel = nextModel;
           isLearningNow = false;
+          allowPostSendLearning = false;
           progressBarEl.style.width = '100%';
           updateStatusDisplay();
           promptInput.disabled = false;
@@ -2217,14 +2227,14 @@
           return;
         }
 
-        // 1. 知識コーパスの学習
+        // 1. 知識コーパスの学習（1フレームあたりの負荷を最小限に抑制）
         for (var i = 0; i < BATCH_PER_FRAME && step < TOTAL_STEPS; i++) {
           nextModel.trainStep();
           step++;
         }
 
         // 2. 日常会話.txt＋日常会話コーパス＆チャット履歴の反復学習（エポック回し）
-        var chatBatch = Math.max(Math.ceil(BATCH_PER_FRAME * 0.5), Math.ceil(dynamicChatSteps / 10));
+        var chatBatch = Math.max(6, Math.ceil(BATCH_PER_FRAME * 0.6));
         for (var c = 0; c < chatBatch && chatStep < dynamicChatSteps; c++) {
           var epochRes = nextModel.trainChatEpochStep();
           if (epochRes.epochCompleted) {
@@ -2238,10 +2248,10 @@
         var percent = Math.round((totalDone / totalAll) * 100);
         progressBarEl.style.width = percent + '%';
         trainStatusEl.textContent = isSilentBackground
-          ? '🔄 裏側で日常会話.txtエポック学習(' + (memoryStore.chatEpochCount || 0) + '周目)＆語彙更新中... ' + percent + '%'
+          ? '🔄 待機時間に日常会話.txtエポック学習(' + (memoryStore.chatEpochCount || 0) + '周目)中... ' + percent + '%'
           : '⚡ ' + TRANSFORMER_LAYERS + '層Transformer＆日常会話.txtエポック学習中... ' + percent + '%';
 
-        setTimeout(fastTrainLoop, 5);
+        setTimeout(fastTrainLoop, TRAIN_FRAME_INTERVAL_MS);
       }
 
       fastTrainLoop();
@@ -2251,9 +2261,9 @@
       if (githubWriteQueue.length > 0 && !isGitHubWriting) {
         processGitHubWriteQueue();
       }
-      if (isLearningNow) return;
+      if (isLearningNow || shouldPauseBackgroundLearning()) return;
       try {
-        trainStatusEl.textContent = '🌐 裏側で日常会話.txtエポック＆語彙を自動学習中...';
+        trainStatusEl.textContent = '🌐 放置時間を利用して日常会話.txtエポック＆語彙を自動学習中...';
         var latestDailyChat = await fetchGitHubDailyChatFile();
         if (latestDailyChat) {
           memoryStore.dailyChatCorpusText = latestDailyChat;
@@ -2285,7 +2295,20 @@
         }
 
         trainStatusEl.textContent = '📂 GitHub（280054-netizen/tomoAI）の knowledge.txt と 日常会話.txt を読み込み中...';
-        var githubText = await fetchGitHubKnowledgeFile();
+        var results = await Promise.all([
+          fetchGitHubKnowledgeFile(),
+          fetchGitHubDailyChatFile()
+        ]);
+        var githubText = results[0];
+        var dailyChatText = results[1];
+
+        if (dailyChatText) {
+          memoryStore.dailyChatCorpusText = dailyChatText;
+          if (memoryStore.topics.indexOf('日常会話.txt(成分・品詞コーパス)') === -1) {
+            memoryStore.topics.unshift('日常会話.txt(成分・品詞コーパス)');
+          }
+        }
+
         if (githubText && memoryStore.corpusText.indexOf(githubText.slice(0, 25)) === -1) {
           var merged = githubText + (memoryStore.corpusText ? '\n\n' + memoryStore.corpusText : '');
           memoryStore.corpusText = (MAX_MEMORY_CHARS === Infinity) ? merged : merged.slice(-MAX_MEMORY_CHARS);
@@ -2294,26 +2317,18 @@
           }
         }
 
-        var dailyChatText = await fetchGitHubDailyChatFile();
-        if (dailyChatText) {
-          memoryStore.dailyChatCorpusText = dailyChatText;
-        }
-
         if (memoryStore.chatHistory && memoryStore.chatHistory.length > 0) {
           memoryStore.chatHistory.forEach(function(item) {
             addMessageImmediate(item.text, item.sender, item.imageUrl);
           });
         }
 
-        trainStatusEl.textContent = '🌐 日常会話.txtエポック＆語彙を学習中...';
+        trainStatusEl.textContent = '🌐 8層Transformer＆言葉吟味層・日常会話.txtエポック学習中...';
         var fetched = await fetchRandomWebArticles();
 
         var isFirstEver = (!memoryStore.corpusText || memoryStore.corpusText.length <= 15);
-        var dailyNote = memoryStore.dailyChatCorpusText
-          ? '「日常会話.txt」もしっかり読み込んで、8層Transformerと言葉吟味層でエポック学習を始めたよ！'
-          : '8層Transformerと言葉吟味層で会話エポック学習を始めたよ！';
         var greeting = isFirstEver
-          ? 'やっほー！カフェ・LLMだよ☕ ' + dailyNote + 'どんどんおしゃべりしてね！'
+          ? 'やっほー！カフェ・LLMだよ☕ 8層Transformer（48次元）と言葉吟味層を搭載し、文字入力中は学習を自動一時停止してサクサク動くように進化したよ！何でも話しかけてね！'
           : null;
 
         trainAndGrowMemory(fetched.text, fetched.titles, greeting, false);
@@ -2333,6 +2348,10 @@
         prompt = 'こんにちは！';
       }
 
+      isTypingActive = false;
+      isComposingIME = false;
+      if (typingIdleTimer) clearTimeout(typingIdleTimer);
+
       addMessageImmediate(prompt, 'user');
       memoryStore.chatHistory.push({ sender: 'user', text: prompt });
       promptInput.value = '';
@@ -2342,6 +2361,7 @@
       var replyObj = await generateFullLLMReply(prompt);
       memoryStore.chatHistory.push({ sender: 'ai', text: replyObj.text });
 
+      allowPostSendLearning = true;
       selfEvolveFromChat(prompt, replyObj.text);
       saveToPermanentMemory();
 
@@ -2352,11 +2372,40 @@
       });
     }
 
+    // ==========================================
+    // ★入力欄イベント監視（フォーカス・タイピング・日本語変換中は学習を完全停止）
+    // ==========================================
+    promptInput.addEventListener('focus', function() {
+      isInputFocused = true;
+    });
+
+    promptInput.addEventListener('blur', function() {
+      isInputFocused = false;
+      isTypingActive = false;
+      isComposingIME = false;
+    });
+
+    promptInput.addEventListener('compositionstart', function() {
+      isComposingIME = true;
+      markUserTypingActivity();
+    });
+
+    promptInput.addEventListener('compositionend', function() {
+      isComposingIME = false;
+      markUserTypingActivity();
+    });
+
+    promptInput.addEventListener('input', function() {
+      markUserTypingActivity();
+    });
+
     promptInput.addEventListener('keydown', function(e) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         handleGenerateClick();
+        return;
       }
+      markUserTypingActivity();
     });
 
     window.addEventListener('DOMContentLoaded', bootAI);
