@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>☕ カフェ・LLM（5層Transformer・反復ブロック・自己コード修復・画像生成版）</title>
+  <title>☕ カフェ・LLM（脱定型文・5層Transformer直接対話・自己修復・画像生成版）</title>
   <!-- ブラウザのタブに表示されるオリジナル「カフェAI」ファビコン（SVG） -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23fdf8f2' stroke='%238d6e63' stroke-width='4'/%3E%3Cpath d='M22 16 Q20 12 22 8 M32 15 Q30 11 32 7 M42 16 Q40 12 42 8' stroke='%23e67e22' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M16 24 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z' fill='%238d6e63'/%3E%3Cpath d='M44 27 H49 C52 28 54 30 54 33.5 C54 37 52 39 49 39 H44' stroke='%238d6e63' stroke-width='4' fill='none'/%3E%3Ccircle cx='25' cy='35' r='2.5' fill='%23fff'/%3E%3Ccircle cx='35' cy='35' r='2.5' fill='%23fff'/%3E%3Cpath d='M27 41 Q30 44 33 41' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
   <style>
@@ -343,13 +343,13 @@
       </svg>
       <h1>カフェ・LLM</h1>
     </div>
-    <div class="subtitle">5層Transformer・直近単語ブロック・自己コード修復・AI画像生成LLM</div>
+    <div class="subtitle">脱定型文・5層Transformer直接対話・自己コード修復・AI画像生成LLM</div>
   </header>
 
   <div class="card">
     <div class="status-bar" id="status-container">
       <div class="status-top">
-        <span id="train-status">⏳ 5層Transformer＆反復ブロックエンジン起動中...</span>
+        <span id="train-status">⏳ 5層Transformer＆自然対話エンジン起動中...</span>
         <div class="tool-buttons">
           <button type="button" class="mini-btn" onclick="toggleKnowledgePanel()">🧠 5層LLM脳みそ＆自己診断</button>
           <button type="button" class="mini-btn github-sync-btn" onclick="toggleGitHubConfigPanel()">🔒 制作者設定</button>
@@ -373,7 +373,7 @@
     <div id="chat-box"></div>
 
     <div class="input-group">
-      <textarea id="prompt-input" placeholder="普段のおしゃべり・「自己診断して」・「猫と宇宙の画像を作って」・質問（「〇〇とは？」）など何でもどうぞ..." disabled></textarea>
+      <textarea id="prompt-input" placeholder="普段のおしゃべり・「猫と宇宙の画像を作って」・「自己診断して」・質問（「〇〇とは？」）など何でもどうぞ..." disabled></textarea>
       <button type="button" id="generate-btn" class="btn-send" onclick="handleGenerateClick()" disabled>送信</button>
     </div>
   </div>
@@ -399,9 +399,9 @@
     var SELF_CODE_VERSION = 3;
     var TRANSFORMER_LAYERS = 5;
     var RECENT_BLOCK_WINDOW = 6;
-    var MAX_VOCAB_SIZE = 2100;
+    var MAX_VOCAB_SIZE = 1800;
     var LEARNING_RATE = 0.045;
-    var LAST_SELF_REPAIR_NOTE = '語彙上限を 1800 → 2100語へ自己拡張';
+    var LAST_SELF_REPAIR_NOTE = '定型文廃止＆5層Transformer自然対話エンジン搭載';
     /* SELF_TUNED_CONFIG_END */
 
     var FETCH_ARTICLE_COUNT = 3;
@@ -414,7 +414,25 @@
     var TYPING_SPEED_MS = 16;
     var DB_NAME = 'CafeUltraLLM5LayerDB';
     var DB_STORE = 'llmStateStore';
-    var STORAGE_KEY = 'cafe_ultra_llm_5layer_v1';
+    var STORAGE_KEY = 'cafe_ultra_llm_5layer_v2';
+
+    // ==========================================
+    // ★脱ボット感：5層Transformerが自然な話し言葉を学ぶための基礎会話コーパス
+    // ==========================================
+    var BASE_CHAT_CORPUS = [
+      '今日はいい天気だね。本当だね、風が心地よくてお散歩したくなる気分だよ。',
+      'ちょっと疲れたかも。無理しないでゆっくり休もうね。温かいカフェラテでも淹れようか？',
+      '最近どう？おかげさまで毎日少しずつ新しい言葉を覚えて楽しく過ごしてるよ！そっちはどう？',
+      '面白い話しようよ！いいね、最近気になってることとか好きなゲームやアニメの話でもしようか？',
+      'お腹すいたな。焼きたてのトーストと甘いパンケーキの香りがしてきそうだね。',
+      '眠くなってきた。目を閉じて少しリラックスするのも大事だよ。無理は禁物だね。',
+      'なるほど、そういう考え方もあるんだね。すごく納得したよ！もっと詳しく聞かせてほしいな。',
+      'すごいね！そのアイデアはワクワクするよ。一緒に形にしていけたら最高だね。',
+      'ありがとう！そう言ってもらえるとすごく嬉しいよ。いつでも力になるからね。',
+      'おはよう！今日もいい一日にしようね。朝のコーヒーは最高に美味しいよ。',
+      'こんばんは！夜のリラックスタイムだね。今日はどんな一日だった？',
+      'こんにちは！ゆっくりしていってね。今ちょうど美味しいコーヒーが淹れ終わったところだよ。'
+    ].join('\n');
 
     var statusContainer = document.getElementById('status-container');
     var trainStatusEl = document.getElementById('train-status');
@@ -839,7 +857,6 @@
       } catch (e) {}
     }
 
-    // 見出し記号（【テーマ：】など）を除いた綺麗な日本語文だけを学習用トークンにする
     function tokenizeJapanese(text) {
       if (!text) return [];
       var cleanForTokens = text
@@ -851,11 +868,11 @@
     }
 
     // ==========================================
-    // ★進化ポイント1：4〜6層可変（標準5層）Deep Transformer + LayerNorm + FFN
+    // 5層Deep Transformer + LayerNorm + FFN
     // ==========================================
     function CafeUltraTransformer(text, previousWeights) {
-      var sampleText = text.slice(-60000);
-      var rawTokens = tokenizeJapanese(sampleText);
+      var mergedForTraining = BASE_CHAT_CORPUS + '\n' + (text || '').slice(-55000);
+      var rawTokens = tokenizeJapanese(mergedForTraining);
 
       var freqMap = {};
       for (var i = 0; i < rawTokens.length; i++) {
@@ -885,7 +902,6 @@
       this.tokenEmbed = this.createMatrix(this.vocabSize, EMBED_DIM);
       this.posEmbed = this.createMatrix(CONTEXT_SIZE, EMBED_DIM);
 
-      // 4〜6層（TRANSFORMER_LAYERS層）の Self-Attention + FFN ブロックを動的生成
       this.layers = [];
       for (var l = 0; l < this.numLayers; l++) {
         this.layers.push({
@@ -1018,7 +1034,6 @@
         attnOut.push(self.layerNorm(residual1));
       }
 
-      // FFN + Residual + LayerNorm
       var H = this.matMul(attnOut, layerObj.Wff1).map(function(row) {
         return row.map(function(v) { return v > 0 ? v : v * 0.05; });
       });
@@ -1038,7 +1053,6 @@
       });
       hiddenStates.push(X);
 
-      // 5層（TRANSFORMER_LAYERS層）すべてを順伝播
       for (var l = 0; l < this.numLayers; l++) {
         X = this.runTransformerBlock(X, this.layers[l]);
         hiddenStates.push(X);
@@ -1078,7 +1092,6 @@
       var lastPos = cache.seqLen - 1;
       var lastTokenId = inputIds[lastPos];
 
-      // 5層すべての重みを深層学習アップデート
       for (var l = this.numLayers - 1; l >= 0; l--) {
         var layerInput = cache.hiddenStates[l][lastPos];
         var layerScale = 0.25 / (this.numLayers - l);
@@ -1103,11 +1116,11 @@
     };
 
     // ==========================================
-    // ★進化ポイント2：直近に出てきた言葉を弾く（Repetition Penalty）搭載生成エンジン
-    // 「にののすへあさのである日8漫画家」のような反復ループを徹底防止！
+    // ★脱定型文・5層Transformer直接対話エンジン
+    // 固定テンプレートを一切使わず、5層Transformer自身が文脈を受け取って直接返答文を生成する
     // ==========================================
     CafeUltraTransformer.prototype.generateChatResponse = function(seedText, maxTokens) {
-      if (!maxTokens) maxTokens = 14;
+      if (!maxTokens) maxTokens = 22;
       var tokens = tokenizeJapanese(seedText);
       var self = this;
       var ids = tokens.map(function(t) { return self.tokenToId[t] !== undefined ? self.tokenToId[t] : 0; });
@@ -1119,28 +1132,30 @@
       for (var step = 0; step < maxTokens; step++) {
         var ctx = ids.slice(-CONTEXT_SIZE);
         var res = this.forward(ctx);
-
-        // 直近 RECENT_BLOCK_WINDOW 語に出てきたトークンIDをリストアップ
         var recentBlockedIds = ids.slice(-RECENT_BLOCK_WINDOW);
 
         var scaledLogits = res.logits.map(function(l, idx) {
           var tok = self.idToToken[idx];
           if (idx === 0 || !tok || tok === '\n') return -1e9;
 
-          // 1. 直近に出てきた言葉を弾く（強いペナルティを与える）
+          // 直近に出てきた言葉を弾く
           if (recentBlockedIds.indexOf(idx) !== -1) {
             return -1e9;
           }
 
-          // 2. 「にののすへあさ…」防止：1文字ひらがなが2回以上連続したら、次の1文字ひらがなを弾く
+          // 最初の1語目がいきなり句読点になるのを防ぐ
+          if (step === 0 && /^[。、！？]$/.test(tok)) {
+            return -1e9;
+          }
+
+          // 1文字ひらがなの連続を弾く
           var isSingleHiragana = /^[ぁ-ん]$/.test(tok);
           if (isSingleHiragana && singleHiraganaStreak >= 1) {
             return -1e9;
           }
 
-          // 3. 意味のある単語（2文字以上の漢字・カタカナ・熟語）を少し優遇
-          var bonus = (tok.length >= 2) ? 0.65 : 0.0;
-          return (l + bonus) / 0.68;
+          var bonus = (tok.length >= 2) ? 0.75 : 0.0;
+          return (l + bonus) / 0.72;
         });
 
         var probs = this.softmax(scaledLogits);
@@ -1164,9 +1179,14 @@
         }
 
         generated.push(word);
-        if ((word === '。' || word === '！') && generated.length >= 5) break;
+        if ((word === '。' || word === '！' || word === '？') && generated.length >= 7) break;
       }
-      return generated.join('');
+
+      var resultText = generated.join('');
+      if (resultText && !/[。！？]$/.test(resultText)) {
+        resultText += '！';
+      }
+      return resultText;
     };
 
     // ==========================================
@@ -1453,7 +1473,7 @@
       }
       if (nameMatch && nameMatch[1]) {
         memoryStore.userProfile.name = nameMatch[1];
-        return 'はじめまして、' + memoryStore.userProfile.name + 'さん！お名前を長期メモリにしっかり刻みました☕ これからもゆっくりおしゃべりしましょう！';
+        return 'はじめまして、' + memoryStore.userProfile.name + 'さん！お名前覚えたよ☕ これからもゆっくりおしゃべりしようね！';
       }
 
       var likeMatch = trimmedInput.match(/(?:私|僕|俺|わたし|ぼく|おれ)は([^\s。！!？?、]+)が(?:好き|大好き|趣味)/);
@@ -1462,7 +1482,7 @@
         if (memoryStore.userProfile.likes.indexOf(item) === -1) {
           memoryStore.userProfile.likes.push(item);
         }
-        return 'なるほど、「' + item + '」がお好きなんですね☕ あなたの好みとして長期メモリに記憶しました！';
+        return '「' + item + '」が好きなんだね☕ しっかり覚えておくよ！';
       }
       return '';
     }
@@ -1471,7 +1491,7 @@
       var lower = trimmedInput.toLowerCase();
 
       if (lower.indexOf('python') !== -1 || lower.indexOf('パイソン') !== -1) {
-        return userNamePrefix + 'Pythonのサンプルコードを作成しました☕ そのままコピーして使えます！\n\n' +
+        return userNamePrefix + 'Pythonのサンプルコードを書いてみたよ☕ コピーして使ってみてね！\n\n' +
           '```python\n' +
           '# カフェ・LLMが作成したPythonサンプル\n' +
           'def greet(name):\n' +
@@ -1481,7 +1501,7 @@
       }
 
       if (lower.indexOf('javascript') !== -1 || lower.indexOf('js') !== -1) {
-        return userNamePrefix + 'JavaScriptのサンプルコードを作成しました☕ そのままコピーして使えます！\n\n' +
+        return userNamePrefix + 'JavaScriptのサンプルコードを書いてみたよ☕ コピーして使ってみてね！\n\n' +
           '```javascript\n' +
           '// カフェ・LLMが作成したJavaScriptサンプル\n' +
           'function sayHello(name) {\n' +
@@ -1492,7 +1512,7 @@
       }
 
       if (lower.indexOf('css') !== -1) {
-        return userNamePrefix + 'おしゃれなカフェ風ボタンのCSSコードを作成しました☕\n\n' +
+        return userNamePrefix + 'カフェ風ボタンのCSSコードを作ってみたよ☕\n\n' +
           '```css\n' +
           '.cafe-btn {\n' +
           '  background-color: #8d6e63;\n' +
@@ -1510,7 +1530,7 @@
         ? memoryStore.userProfile.name + 'のWebページ'
         : 'カフェ・LLMが作ったWebページ';
 
-      return userNamePrefix + 'HTMLの完成コードを作成しました☕ そのままコピーして「index.html」として保存するとブラウザで動きます！\n\n' +
+      return userNamePrefix + 'HTMLの完成コードを作ったよ☕ そのまま「index.html」として保存するとブラウザで動くよ！\n\n' +
         '```html\n' +
         '<!DOCTYPE html>\n' +
         '<html lang="ja">\n' +
@@ -1535,7 +1555,7 @@
         var cleanUser = userMsg.replace(/\s+/g, '');
         var cleanAi = aiReply.replace(/```[\s\S]*?```/g, '').replace(/\s+/g, '').slice(0, 60);
         if (cleanUser.length >= 2 && cleanAi.length >= 5) {
-          var evolveEntry = '【自己進化ログ：対話学習#' + memoryStore.evolutionCount + '】\n・対話表現：' + cleanUser + 'に対して' + cleanAi + 'と応答する。';
+          var evolveEntry = '【自己進化ログ：対話学習#' + memoryStore.evolutionCount + '】\n・対話表現：' + cleanUser + '。' + cleanAi;
           trainAndGrowMemory(evolveEntry, [], null, true);
         }
       }
@@ -1546,6 +1566,9 @@
       updateStatusDisplay();
     }
 
+    // ==========================================
+    // ★脱定型文・統合応答エンジン
+    // ==========================================
     async function generateFullLLMReply(userInput) {
       var trimmed = userInput.trim();
       var normalized = trimmed.replace(/[（(][^）)]*[）)]/g, '').replace(/[！!？?。、\s]/g, '');
@@ -1553,17 +1576,20 @@
         ? memoryStore.userProfile.name + 'さん、'
         : '';
 
+      // 0. 自己診断・自己修復コマンド
       if (/(?:自己診断|自己修復|コード.*(?:直して|修正|チェック|診断)|不具合.*(?:見つけて|直して|修正)|自分.*(?:直して|修正|進化))/.test(trimmed)) {
         var repairResult = await runSelfCodeDiagnosticsAndRepair(true, 'ユーザー指示による自己コード最適化＆健全性チェック');
         return { text: userNamePrefix + repairResult.message, imageUrl: null };
       }
 
+      // 1. ユーザー情報の記憶
       var learnedUserNote = extractAndSaveUserMemory(trimmed);
       if (learnedUserNote) {
         saveToPermanentMemory();
         return { text: learnedUserNote, imageUrl: null };
       }
 
+      // 2. AI画像生成リクエスト
       if (/(?:画像|イラスト|絵|アート|写真|アイコン).*(?:つくって|作って|描いて|書いて|生成|お願い)/i.test(trimmed) ||
           /(?:つくって|作って|描いて|書いて|生成).*(?:画像|イラスト|絵|アート)/i.test(trimmed)) {
         var artTheme = trimmed
@@ -1571,62 +1597,39 @@
           .trim() || 'カフェと星空';
         var imgDataUrl = generateAIArtworkDataURL(artTheme);
         return {
-          text: userNamePrefix + '「' + artTheme + '」をイメージしてオリジナルイラストを描き上げました☕🎨 下のボタンからPNG画像として保存もできますよ！',
+          text: userNamePrefix + '「' + artTheme + '」のイラストを描いてみたよ☕🎨 下のボタンから保存もできるよ！',
           imageUrl: imgDataUrl,
           imageTitle: artTheme
         };
       }
 
+      // 3. コード生成リクエスト
       if (/(?:html|css|javascript|js|python|コード|プログラム|ソース).*(?:つくって|作って|書いて|作成|生成|お願い)/i.test(trimmed) ||
           /(?:つくって|作って|書いて|作成|生成).*(?:html|css|javascript|js|python|コード|プログラム)/i.test(trimmed)) {
         return { text: generateRequestedCodeSnippet(trimmed, userNamePrefix), imageUrl: null };
       }
 
+      // 4. 挨拶にも5層Transformerの生きた続き生成を混ぜて定型化を防ぐ
       if (/^(こんにちは|こんにちわ|こんばんは|こんばんわ|おはよう|おはようございます|やあ|ハロー|はじめまして|よろしく|おっす|ちわ)/.test(normalized)) {
-        var pressureNote = (trimmed.indexOf('圧') !== -1) ? '（ビシッ！と背筋を伸ばしてご挨拶します！☕）\n' : '';
-        var vocabCount = llmModel ? llmModel.vocabSize : 0;
+        var pressureNote = (trimmed.indexOf('圧') !== -1) ? '（ビシッ！と背筋を伸ばしてご挨拶するね！☕）\n' : '';
+        var naturalGreetingFollow = llmModel ? llmModel.generateChatResponse(trimmed, 14) : '今日もゆっくりおしゃべりしようね！';
         return {
-          text: pressureNote + userNamePrefix + 'こんにちは！' + TRANSFORMER_LAYERS + '層Transformer＆直近' + RECENT_BLOCK_WINDOW + '語ブロック搭載の「カフェ・LLM(v' + SELF_CODE_VERSION + ')」へようこそ☕\n現在 ' + vocabCount + '語の語彙で、意味のある自然な言葉をつむげるように進化したよ！',
+          text: pressureNote + userNamePrefix + naturalGreetingFollow + ' ☕',
           imageUrl: null
         };
       }
 
+      // 5. ユーザー記憶確認
       if (/名前|好み|好きなもの|覚えてる/.test(normalized) && /私|僕|俺|わたし|ぼく|おれ/.test(normalized)) {
         var uName = memoryStore.userProfile.name || 'まだ聞いていないみたい';
         var uLikes = memoryStore.userProfile.likes.length > 0 ? memoryStore.userProfile.likes.join('・') : 'まだ登録なし';
         return {
-          text: 'もちろん長期メモリに覚えていますよ☕\n・お名前：' + uName + '\n・好きなもの：' + uLikes,
+          text: 'ちゃんと覚えてるよ☕ お名前は「' + uName + '」で、好きなものは「' + uLikes + '」だよね！',
           imageUrl: null
         };
       }
 
-      if (/^(ありがとう|ありがとうございます|サンキュー|助かった|すごい|賢い|いいね|最高|なるほど|へー|そうなんだ|面白い|おもしろい)/.test(normalized)) {
-        return {
-          text: userNamePrefix + 'そう言ってもらえると嬉しいです☕ ' + TRANSFORMER_LAYERS + '層Transformerと直近単語ブロックのおかげで、おしゃべりがどんどん自然になってきています！',
-          imageUrl: null
-        };
-      }
-
-      if (/疲れた|ねむい|眠い|お腹すいた|おなかすいた|暇|ひま|元気|調子はどう|どう思う|おすすめ/.test(normalized)) {
-        if (/疲れた|ねむい|眠い/.test(normalized)) {
-          return { text: userNamePrefix + 'お疲れさまです☕ そういうときは温かいコーヒーでも飲んで一息つきましょう！「夕焼けの海の画像を作って」みたいに頼んでくれたら絵も描きますよ！', imageUrl: null };
-        }
-        if (/お腹すいた|おなかすいた/.test(normalized)) {
-          return { text: userNamePrefix + 'お腹がすくとエネルギーが出ませんよね☕ 焼きたてのパンケーキとカフェラテをご用意したい気分です！', imageUrl: null };
-        }
-        if (/暇|ひま|おすすめ/.test(normalized)) {
-          return { text: userNamePrefix + 'それなら「猫とカフェの画像を作って」でイラストを描いたり、「自己診断して」で私の' + TRANSFORMER_LAYERS + '層Transformerを点検したりしましょう☕', imageUrl: null };
-        }
-        return { text: userNamePrefix + '私は' + TRANSFORMER_LAYERS + '層Transformer＋直近' + RECENT_BLOCK_WINDOW + '語ブロックを回転させて絶好調です☕ あなたとのおしゃべりが一番のエネルギー源だよ！', imageUrl: null };
-      }
-
-      if (/^(自己紹介|あなたは誰|君は誰|何ができる|機能)/.test(normalized)) {
-        return {
-          text: '私は' + TRANSFORMER_LAYERS + '層Transformer＆自己コード修復型の「カフェ・LLM（v' + SELF_CODE_VERSION + '）」です☕\n1. 【' + TRANSFORMER_LAYERS + '層Deep Transformer＋反復ブロック】直近' + RECENT_BLOCK_WINDOW + '語の重複やひらがな連続を弾き、自然な日本語を生成します\n2. 【自己コード診断＆GitHub修復】不具合を見つけると自分のindex.htmlを自動修正します\n3. 【AI画像生成＆コード生成】「〇〇の画像を作って」「HTMLコードつくって」にも対応しています！',
-          imageUrl: null
-        };
-      }
-
+      // 6. 比較推論モード（「AとBの違い」）
       var compareMatch = trimmed.match(/^(.+?)と(.+?)(?:の|について|を)?(?:違い|共通点|比較|関係|どっち|比べて)/);
       if (compareMatch && compareMatch[1] && compareMatch[2]) {
         var topicA = compareMatch[1].replace(/^(?:ねえ|あの|ところで)/, '').trim();
@@ -1653,35 +1656,38 @@
 
         if (resA && resB) {
           return {
-            text: userNamePrefix + '「' + topicA + '」と「' + topicB + '」を比較しました☕\n\n' +
-              '■ 【' + resA.topic + '】\n' + resA.text + '\n\n' +
-              '■ 【' + resB.topic + '】\n' + resB.text,
+            text: userNamePrefix + '「' + topicA + '」と「' + topicB + '」の違いだね☕\n\n' +
+              '■ ' + resA.topic + '\n' + resA.text + '\n\n' +
+              '■ ' + resB.topic + '\n' + resB.text,
             imageUrl: null
           };
         }
       }
 
+      // 7. 続き要求
       if (/^(もっと詳しく|もっと教えて|続き|つづき|詳細)/.test(normalized) && memoryStore.lastDiscussedTopic) {
         memoryStore.lastTopicOffset = (memoryStore.lastTopicOffset || 0) + 3;
         var moreMatches = searchMultiFactsInMemory([memoryStore.lastDiscussedTopic], memoryStore.lastTopicOffset, true);
         if (moreMatches.length > 0 && moreMatches[0].text) {
-          return { text: userNamePrefix + '「' + memoryStore.lastDiscussedTopic + '」の続きですね☕\n\n' + moreMatches[0].text, imageUrl: null };
+          return { text: userNamePrefix + '「' + memoryStore.lastDiscussedTopic + '」の続きだね☕\n\n' + moreMatches[0].text, imageUrl: null };
         }
       }
 
+      // 8. 文章作成モード
       var writeMatch = trimmed.match(/^(.+?)(?:の|についての|に関する)?(?:文章|作文|紹介文|解説文|物語|ストーリー|スピーチ|まとめ)を?(?:つくって|作って|書いて|作成して|考えて|お願い)/);
       if (writeMatch && writeMatch[1]) {
         var rawWriteTopic = writeMatch[1].trim();
         var writeTopic = (/^(それ|これ|あれ|その|この|さっきの)$/.test(rawWriteTopic) && memoryStore.lastDiscussedTopic)
           ? memoryStore.lastDiscussedTopic
           : rawWriteTopic;
-        var llmCreativeTail = llmModel ? llmModel.generateChatResponse(writeTopic, 14) : '';
+        var llmCreativeTail = llmModel ? llmModel.generateChatResponse(writeTopic, 20) : '';
         return {
-          text: '【「' + writeTopic + '」をテーマにした文章】\n\n静かなカフェの窓辺で温かいコーヒーを味わいながら、「' + writeTopic + '」について思いを巡らせてみました。' + writeTopic + llmCreativeTail,
+          text: '「' + writeTopic + '」をテーマに書いてみたよ☕\n\n' + writeTopic + 'といえば、' + llmCreativeTail,
           imageUrl: null
         };
       }
 
+      // 9. 明示的に「尋ねる質問」のときだけ Wikipedia / knowledge.txt に行く
       var isExplicitQuestion = /(?:とは[？?]?$|ってなに[？?]?$|って何[？?]?$|について教えて|を教えて|を調べて|について調べて|を解説して|を説明して|を検索して|を知りたい|とは何)/.test(trimmed);
 
       if (isExplicitQuestion) {
@@ -1700,7 +1706,7 @@
           var ragMatches = searchMultiFactsInMemory(keywords.length > 0 ? keywords : [targetKeyword], 0, true);
           if (ragMatches.length > 0) {
             return {
-              text: userNamePrefix + '「' + targetKeyword + '」についてknowledge.txtから見つけました☕\n\n■ 【' + ragMatches[0].topic + '】\n' + ragMatches[0].text,
+              text: userNamePrefix + '「' + targetKeyword + '」について記憶から引っ張ってきたよ☕\n\n' + ragMatches[0].text,
               imageUrl: null
             };
           }
@@ -1711,7 +1717,7 @@
             if (topicData.text && topicData.titles.length > 0) {
               trainAndGrowMemory(topicData.text, topicData.titles, null, true);
               return {
-                text: userNamePrefix + '「' + targetKeyword + '」についてWikipediaで調べて、knowledge.txtと' + TRANSFORMER_LAYERS + '層Transformerに記憶しました☕\n\n【調査結果：' + topicData.titles[0] + '】\n' + topicData.summaryForReply,
+                text: userNamePrefix + '「' + targetKeyword + '」について調べて覚えたよ☕\n\n' + topicData.summaryForReply,
                 imageUrl: null
               };
             }
@@ -1719,15 +1725,26 @@
         }
       }
 
-      // メインのチャット会話エンジン（5層Transformer + 直近単語ブロックによる文脈応答）
-      var transformerThought = llmModel ? llmModel.generateChatResponse(trimmed, 12) : '';
-      var chatReplies = [
-        'なるほど〜！「' + trimmed + '」ですね☕ ' + (transformerThought ? '私の' + TRANSFORMER_LAYERS + '層Transformerは「' + transformerThought + '」って連想したよ！' : '') + ' もっと詳しくお話ししようよ！',
-        'わかります、その感じ！☕ 「' + trimmed + '」ってなんだか興味深いですね。' + (transformerThought ? '（' + TRANSFORMER_LAYERS + '層LLMのつぶやき：' + transformerThought + '）' : ''),
-        'いいですね〜！☕ ' + (transformerThought ? '「' + transformerThought + '」なんて言葉が浮かんできました。' : '') + ' 他にも話したいことや描いてほしい絵があったらいつでも言ってね！'
-      ];
-      var chosenChat = chatReplies[Math.floor(Math.random() * chatReplies.length)];
-      return { text: userNamePrefix + chosenChat, imageUrl: null };
+      // ==========================================
+      // 10. ★メインのチャット会話エンジン（定型文ゼロ！5層Transformer直接生成）
+      // 直前の会話文脈＋今のユーザー発言をシードにして、5層Transformer自身が返答文を紡ぐ
+      // ==========================================
+      var prevContext = '';
+      if (memoryStore.chatHistory && memoryStore.chatHistory.length >= 2) {
+        var lastAiTurn = memoryStore.chatHistory[memoryStore.chatHistory.length - 2];
+        if (lastAiTurn && lastAiTurn.text) {
+          prevContext = lastAiTurn.text.slice(-20) + ' ';
+        }
+      }
+
+      var directGenerated = llmModel
+        ? llmModel.generateChatResponse(prevContext + trimmed, 22)
+        : 'うんうん、その話もっと聞かせてほしいな！';
+
+      return {
+        text: userNamePrefix + directGenerated + ' ☕',
+        imageUrl: null
+      };
     }
 
     function appendArtToBubble(bubbleEl, imageUrl, title) {
@@ -1832,7 +1849,7 @@
       var userLikes = (memoryStore.userProfile && memoryStore.userProfile.likes.length > 0) ? memoryStore.userProfile.likes.join(' / ') : '未登録';
 
       knowledgePanel.innerHTML =
-        '<strong>🧠 ' + TRANSFORMER_LAYERS + '層Transformer（直近' + RECENT_BLOCK_WINDOW + '語ブロック）＆自己修復状態:</strong><br>' +
+        '<strong>🧠 ' + TRANSFORMER_LAYERS + '層Transformer（脱定型文・直近' + RECENT_BLOCK_WINDOW + '語ブロック）状態:</strong><br>' +
         '・最新コード診断ログ: <b>' + LAST_SELF_REPAIR_NOTE + '</b>（v' + SELF_CODE_VERSION + '）<br>' +
         '・単語トークナイザー語彙数: <b>' + vocabSize + '語</b>（上限: ' + MAX_VOCAB_SIZE + '語 / 学習率: ' + LEARNING_RATE + '）<br>' +
         '・自己進化回数: <b>' + (memoryStore.evolutionCount || 0) + '回</b>（GitHub knowledge.txt & index.html 連動）<br>' +
@@ -1933,8 +1950,8 @@
         var percent = Math.round((step / TOTAL_STEPS) * 100);
         progressBarEl.style.width = percent + '%';
         trainStatusEl.textContent = isSilentBackground
-          ? '🔄 裏側で語彙学習＆' + TRANSFORMER_LAYERS + '層Transformer継続更新中... ' + percent + '%'
-          : '⚡ ' + TRANSFORMER_LAYERS + '層Transformer（LayerNorm + FFN）学習中... ' + percent + '%';
+          ? '🔄 裏側で語彙＆自然対話学習中... ' + percent + '%'
+          : '⚡ ' + TRANSFORMER_LAYERS + '層Transformer自然対話モデル学習中... ' + percent + '%';
 
         setTimeout(fastTrainLoop, 5);
       }
@@ -1988,12 +2005,12 @@
           });
         }
 
-        trainStatusEl.textContent = '🌐 語彙を学習し、' + TRANSFORMER_LAYERS + '層Transformerの脳みそを更新中...';
+        trainStatusEl.textContent = '🌐 自然会話と語彙を学習中...';
         var fetched = await fetchRandomWebArticles();
 
         var isFirstEver = (!memoryStore.corpusText || memoryStore.corpusText.length <= 15);
         var greeting = isFirstEver
-          ? 'こんにちは！' + TRANSFORMER_LAYERS + '層Transformer＆直近' + RECENT_BLOCK_WINDOW + '語ブロックを搭載した「カフェ・LLM(v' + SELF_CODE_VERSION + ')」へようこそ☕\n意味の通る自然なフレーズをつむげるように進化したよ！何でもおしゃべりしてね！'
+          ? 'やっほー！カフェ・LLMだよ☕ 定型文をやめて、5層Transformerが自分の言葉でおしゃべりできるように進化したよ！何でも気軽に話しかけてね！'
           : null;
 
         trainAndGrowMemory(fetched.text, fetched.titles, greeting, false);
