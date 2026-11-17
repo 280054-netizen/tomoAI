@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>☕ カフェ・LLM（単語トークン・多層Transformer・長期記憶搭載版）</title>
   <!-- ブラウザのタブに表示されるオリジナル「カフェAI」ファビコン（SVG） -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23fdf8f2' stroke='%238d6e63' stroke-width='4'/%3E%3Cpath d='M22 16 Q20 12 22 8 M32 15 Q30 11 32 7 M42 16 Q40 12 42 8' stroke='%23e67e22' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M16 24 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z' fill='%238d6e63'/%3E%3Cpath d='M44 27 H49 C52 27 54 29 54 33.5 C54 37 52 39 49 39 H44' stroke='%238d6e63' stroke-width='4' fill='none'/%3E%3Ccircle cx='25' cy='35' r='2.5' fill='%23fff'/%3E%3Ccircle cx='35' cy='35' r='2.5' fill='%23fff'/%3E%3Cpath d='M27 41 Q30 44 33 41' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23fdf8f2' stroke='%238d6e63' stroke-width='4'/%3E%3Cpath d='M22 16 Q20 12 22 8 M32 15 Q30 11 32 7 M42 16 Q40 12 42 8' stroke='%23e67e22' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M16 24 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z' fill='%238d6e63'/%3E%3Cpath d='M44 27 H49 C52 27 54 29 54 33.5 C54 37 52 39 49 39 H44' stroke='%238d6e63' stroke-width='4' fill='none'/%3E%3Ccircle cx='25" cy="35" r="2.5" fill="%23fff'/%3E%3Ccircle cx='35' cy='35' r='2.5' fill='%23fff'/%3E%3Cpath d='M27 41 Q30 44 33 41' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
   <style>
     :root {
       --bg-cream: #fdf8f2;
@@ -304,7 +304,6 @@
 
   <header>
     <div class="title-wrap">
-      <!-- オリジナル「カフェ・LLM」SVGアイコン -->
       <svg class="header-logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-label="カフェLLMアイコン">
         <circle cx="32" cy="32" r="30" fill="#fbf3e8" stroke="#8d6e63" stroke-width="3"/>
         <path d="M22 17 Q20 12 22 8 M32 16 Q30 11 32 7 M42 17 Q40 12 42 8" stroke="#e67e22" stroke-width="3" stroke-linecap="round" fill="none"/>
@@ -325,7 +324,7 @@
         <span id="train-status">⏳ LLMの頭脳とGitHub knowledge.txt にアクセス中...</span>
         <div class="tool-buttons">
           <button type="button" class="mini-btn" onclick="toggleKnowledgePanel()">🧠 LLM脳みそ＆記憶を見る</button>
-          <button type="button" class="mini-btn github-sync-btn" onclick="toggleGitHubConfigPanel()">🔑 トークン設定</button>
+          <button type="button" class="mini-btn github-sync-btn" onclick="toggleGitHubConfigPanel()">🔒 制作者設定</button>
         </div>
       </div>
       <div class="progress-bar-bg">
@@ -334,10 +333,10 @@
     </div>
 
     <div id="github-config-panel">
-      <strong>🔑 GitHub「knowledge.txt」自動追記用トークン設定（ブラウザ内に安全保存）</strong><br>
-      <span style="font-size:0.75rem; color:#555;">※トークン（github_pat_...）をここに貼り付けて保存すると、GitHubに自動追記され続けます（280054-netizen/tomoAI）。</span>
+      <strong>🔒 制作者専用：GitHub「knowledge.txt」自動追記トークン設定</strong><br>
+      <span style="font-size:0.75rem; color:#555;">※制作者認証済みです。トークン（github_pat_...）を保存するとブラウザ内に安全保管されます（280054-netizen/tomoAI）。</span>
       <input type="password" id="gh-token-input" class="config-input" placeholder="新しいトークン（github_pat_...）を貼り付け">
-      <button type="button" class="save-config-btn" onclick="saveNewGitHubToken()">💾 トークンを保存して自動追記をオンにする</button>
+      <button type="button" class="save-config-btn" onclick="saveNewGitHubToken()">💾 トークンを保存して閉じる</button>
       <span id="gh-badge" style="margin-left:8px; font-size:0.75rem; color:#27ae60;"></span>
     </div>
 
@@ -346,7 +345,7 @@
     <div id="chat-box"></div>
 
     <div class="input-group">
-      <textarea id="prompt-input" placeholder="質問・比較（「宇宙と地球の違い」）・「私の名前は〇〇」など何でも話しかけてね..." disabled></textarea>
+      <textarea id="prompt-input" placeholder="質問・比較（「宇宙と地球の違い」）・「私は〇〇と申します」など何でも話しかけてね..." disabled></textarea>
       <button type="button" id="generate-btn" class="btn-send" onclick="handleGenerateClick()" disabled>送信</button>
     </div>
   </div>
@@ -363,17 +362,17 @@
     };
 
     // ==========================================
-    // GitHub自動連携設定（ベース完全維持）
+    // ★制作者パスワード設定（自由に変更できます）
     // ==========================================
+    var CREATOR_PASSWORD = 'tomo2026';
+    var isCreatorUnlocked = false;
+
     var GITHUB_OWNER = '280054-netizen';
     var GITHUB_REPO = 'tomoAI';
     var GITHUB_TARGET_PATH = 'knowledge.txt';
     var GITHUB_KNOWLEDGE_FILE = './knowledge.txt';
     var TOKEN_STORAGE_KEY = 'tomoai_safe_github_token_v2';
 
-    // ==========================================
-    // AI学習・LLMパラメータ（A・B・C 全方向進化版）
-    // ==========================================
     var FETCH_ARTICLE_COUNT = 3;
     var AUTO_LEARN_INTERVAL_MS = 25000;
     var MAX_MEMORY_CHARS = Infinity;
@@ -401,7 +400,6 @@
     var isLearningNow = false;
     var ghSyncStatus = '待機中';
 
-    // 進化ルートC：長期パーソナルメモリ＆会話状態
     var memoryStore = {
       topics: [],
       corpusText: '',
@@ -436,14 +434,31 @@
       }
     }
 
+    // ==========================================
+    // 修正箇所1：制作者パスワード認証付き設定パネル開閉
+    // ==========================================
     function toggleGitHubConfigPanel() {
-      githubConfigPanel.style.display = (githubConfigPanel.style.display === 'block') ? 'none' : 'block';
+      if (githubConfigPanel.style.display === 'block') {
+        githubConfigPanel.style.display = 'none';
+        return;
+      }
+      if (!isCreatorUnlocked) {
+        var inputPw = prompt('🔒 制作者専用設定です。パスワードを入力してください：');
+        if (inputPw === null) return;
+        if (inputPw !== CREATOR_PASSWORD) {
+          alert('❌ パスワードが違います。制作者のみアクセスできます。');
+          return;
+        }
+        isCreatorUnlocked = true;
+      }
+      githubConfigPanel.style.display = 'block';
     }
 
     function saveNewGitHubToken() {
       var val = document.getElementById('gh-token-input').value.trim();
       if (!val) return;
       localStorage.setItem(TOKEN_STORAGE_KEY, val);
+      document.getElementById('gh-token-input').value = '';
       document.getElementById('gh-badge').textContent = '✅ 保存完了！自動追記を開始します...';
       githubConfigPanel.style.display = 'none';
       if (memoryStore.corpusText) {
@@ -479,8 +494,7 @@
       if (isGitHubWriting || githubWriteQueue.length === 0) return;
       var token = getSavedToken();
       if (!token) {
-        ghSyncStatus = 'トークン未設定（上の🔑から入力）';
-        githubConfigPanel.style.display = 'block';
+        ghSyncStatus = 'トークン未設定（🔒制作者設定から入力）';
         updateStatusDisplay();
         return;
       }
@@ -518,7 +532,6 @@
           } else if (getRes.status === 401 || getRes.status === 403) {
             var authErr = await getRes.json();
             ghSyncStatus = 'トークン無効/権限不足(' + (authErr.message || getRes.status) + ')';
-            githubConfigPanel.style.display = 'block';
             updateStatusDisplay();
             break;
           }
@@ -634,9 +647,6 @@
       } catch (e) {}
     }
 
-    // ==========================================
-    // 進化ルートA-1：日本語単語・文節トークナイザー（WordTokenizer）
-    // ==========================================
     function tokenizeJapanese(text) {
       if (!text) return [];
       var pattern = /[一-龠々〆ヵヶ]+|[ァ-ヴー]+|[a-zA-Z0-9_]+|[ぁ-ん]+|[。、！？\n]/g;
@@ -644,14 +654,10 @@
       return matches ? matches : Array.from(text);
     }
 
-    // ==========================================
-    // 進化ルートA-2：2層Transformer ＋ 学習済み重みの引き継ぎ保存（CafeDeepLLM）
-    // ==========================================
     function CafeDeepLLM(text, previousWeights) {
       var sampleText = text.slice(-50000);
       var rawTokens = tokenizeJapanese(sampleText);
 
-      // 頻出語彙の集計と語彙辞書構築（<UNK>を0番に配置）
       var freqMap = {};
       for (var i = 0; i < rawTokens.length; i++) {
         var tk = rawTokens[i];
@@ -676,21 +682,17 @@
         return (self.tokenToId[tok] !== undefined) ? self.tokenToId[tok] : 0;
       });
 
-      // 2層Transformerの重み行列初期化（過去の脳みそがあれば引き継ぐ！）
       this.tokenEmbed = this.createMatrix(this.vocabSize, EMBED_DIM);
       this.posEmbed = this.createMatrix(CONTEXT_SIZE, EMBED_DIM);
 
-      // Layer 1 Attention
       this.Wq1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wk1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wv1 = this.createMatrix(EMBED_DIM, EMBED_DIM);
 
-      // Layer 2 Attention（多層化）
       this.Wq2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wk2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
       this.Wv2 = this.createMatrix(EMBED_DIM, EMBED_DIM);
 
-      // Output Projection
       this.Wout = this.createMatrix(EMBED_DIM, this.vocabSize);
 
       if (previousWeights) {
@@ -800,7 +802,6 @@
             vec[d2] += w * V[j2][d2];
           }
         }
-        // 残差接続 + ReLU活性化
         out.push(vec.map(function(v, d) {
           var sumVal = v + X[i][d];
           return sumVal > 0 ? sumVal : sumVal * 0.1;
@@ -816,7 +817,6 @@
         return self.tokenEmbed[id].map(function(val, d) { return val + self.posEmbed[pos][d]; });
       });
 
-      // 2層 Transformer 順伝播
       var H1 = this.runSelfAttentionLayer(X0, this.Wq1, this.Wk1, this.Wv1);
       var H2 = this.runSelfAttentionLayer(H1, this.Wq2, this.Wk2, this.Wv2);
 
@@ -859,11 +859,9 @@
         this.posEmbed[lastPos][d2] -= LEARNING_RATE * grad;
 
         for (var d3 = 0; d3 < EMBED_DIM; d3++) {
-          // Layer 2 重み更新
           this.Wv2[d3][d2] -= LEARNING_RATE * 0.4 * cache.H1[lastPos][d3] * grad;
           this.Wq2[d3][d2] -= LEARNING_RATE * 0.2 * cache.H1[lastPos][d3] * grad;
           this.Wk2[d3][d2] -= LEARNING_RATE * 0.2 * cache.H1[lastPos][d3] * grad;
-          // Layer 1 重み更新
           this.Wv1[d3][d2] -= LEARNING_RATE * 0.25 * cache.X0[lastPos][d3] * grad;
           this.Wq1[d3][d2] -= LEARNING_RATE * 0.1 * cache.X0[lastPos][d3] * grad;
           this.Wk1[d3][d2] -= LEARNING_RATE * 0.1 * cache.X0[lastPos][d3] * grad;
@@ -872,7 +870,6 @@
       return loss;
     };
 
-    // LLM自身による単語シーケンス生成（創造的フレーズ補完）
     CafeDeepLLM.prototype.generateTokenContinuation = function(seedText, maxTokens) {
       if (!maxTokens) maxTokens = 16;
       var tokens = tokenizeJapanese(seedText);
@@ -884,7 +881,6 @@
       for (var step = 0; step < maxTokens; step++) {
         var ctx = ids.slice(-CONTEXT_SIZE);
         var res = this.forward(ctx);
-        // 温度付きサンプリング（0.75）で自然な単語選択
         var scaledLogits = res.logits.map(function(l, idx) {
           return idx === 0 ? -1e9 : l / 0.75;
         });
@@ -934,12 +930,31 @@
       return { text: collectedText.trim(), titles: titles };
     }
 
+    // ==========================================
+    // 修正箇所3：Wikipediaの正式記事タイトルを最優先で正確に取得
+    // ==========================================
     async function fetchTopicFromWikipedia(topicQuery) {
-      var searchUrl = 'https://ja.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=' + encodeURIComponent(topicQuery) + '&gsrlimit=3&prop=extracts&exintro&explaintext&format=json&origin=*';
-      var res = await fetch(searchUrl);
+      var exactUrl = 'https://ja.wikipedia.org/w/api.php?action=query&titles=' + encodeURIComponent(topicQuery) + '&redirects=1&prop=extracts&exintro&explaintext&format=json&origin=*';
+      var res = await fetch(exactUrl);
       var data = await res.json();
       var pages = (data.query && data.query.pages) ? data.query.pages : {};
       var keys = Object.keys(pages);
+
+      var hasValidExact = false;
+      for (var j = 0; j < keys.length; j++) {
+        if (Number(keys[j]) > 0 && pages[keys[j]].extract && pages[keys[j]].extract.trim().length > 15) {
+          hasValidExact = true;
+          break;
+        }
+      }
+
+      if (!hasValidExact) {
+        var searchUrl = 'https://ja.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=' + encodeURIComponent(topicQuery) + '&gsrlimit=2&prop=extracts&exintro&explaintext&format=json&origin=*';
+        res = await fetch(searchUrl);
+        data = await res.json();
+        pages = (data.query && data.query.pages) ? data.query.pages : {};
+        keys = Object.keys(pages);
+      }
 
       var structuredBlocks = [];
       var titles = [];
@@ -947,6 +962,7 @@
 
       for (var i = 0; i < keys.length; i++) {
         var pId = keys[i];
+        if (Number(pId) < 0) continue;
         var title = pages[pId].title;
         var cleanBody = cleanWikipediaText(pages[pId].extract);
         if (cleanBody.length > 10) {
@@ -966,9 +982,9 @@
     }
 
     // ==========================================
-    // 進化ルートB：横断RAG検索＆推論エンジン
+    // 修正箇所2：テーマ名が完全一致する本物の記事だけを優先ヒットさせる
     // ==========================================
-    function searchMultiFactsInMemory(keywords, sentenceOffset) {
+    function searchMultiFactsInMemory(keywords, sentenceOffset, requireExactTopic) {
       if (sentenceOffset === undefined) sentenceOffset = 0;
       var lines = memoryStore.corpusText.split('\n');
       var scoredMatches = [];
@@ -977,17 +993,24 @@
         var line = lines[l].trim();
         if (!line || line.indexOf('【テーマ：') === 0) continue;
 
+        var colonIdx = line.indexOf('：');
+        var topicName = colonIdx !== -1 ? line.slice(0, colonIdx).replace(/^・/, '').trim() : '知識メモ';
+        var rawFact = colonIdx !== -1 ? line.slice(colonIdx + 1).trim() : line.replace(/^・/, '');
+
         var score = 0;
         for (var k = 0; k < keywords.length; k++) {
-          if (keywords[k] && line.indexOf(keywords[k]) !== -1) {
-            score += (line.indexOf('・' + keywords[k]) === 0) ? 5 : 2;
+          var kw = keywords[k];
+          if (!kw) continue;
+          if (topicName === kw) {
+            score += 100;
+          } else if (topicName.indexOf(kw) !== -1 && topicName.length <= kw.length + 3) {
+            score += 40;
+          } else if (!requireExactTopic && rawFact.indexOf(kw) !== -1) {
+            score += 2;
           }
         }
 
         if (score > 0) {
-          var colonIdx = line.indexOf('：');
-          var topicName = colonIdx !== -1 ? line.slice(0, colonIdx).replace(/^・/, '').trim() : '知識メモ';
-          var rawFact = colonIdx !== -1 ? line.slice(colonIdx + 1).trim() : line.replace(/^・/, '');
           var sentences = rawFact.split('。').filter(function(s) { return s.trim().length > 0; });
           var start = sentenceOffset < sentences.length ? sentenceOffset : 0;
           var excerpt = sentences.slice(start, start + 3).join('。') + '。';
@@ -999,17 +1022,17 @@
       return scoredMatches.slice(0, 3);
     }
 
-    // ==========================================
-    // 進化ルートC：ユーザー長期記憶の自動抽出ヘルパー
-    // ==========================================
     function extractAndSaveUserMemory(trimmedInput) {
       if (!memoryStore.userProfile) {
         memoryStore.userProfile = { name: '', likes: [], facts: [] };
       }
-      var nameMatch = trimmedInput.match(/(?:私|僕|俺|わたし|ぼく|おれ)の名前は([^\s。！!？?、]+)(?:です|だよ|だ|っていう|といいます)?/);
+      var nameMatch = trimmedInput.match(/^(?:私|僕|俺|わたし|ぼく|おれ)(?:の名前)?は([^\s。！!？?、]+?)(?:と申します|といいます|っていう|です|だよ|だ)[。！!？?]*$/);
+      if (!nameMatch) {
+        nameMatch = trimmedInput.match(/^([^\s。！!？?、]+?)と申します[。！!？?]*$/);
+      }
       if (nameMatch && nameMatch[1]) {
         memoryStore.userProfile.name = nameMatch[1];
-        return 'お名前を長期メモリにしっかり刻みました！「' + memoryStore.userProfile.name + '」さんですね☕ これからもよろしくお願いします！';
+        return 'はじめまして、' + memoryStore.userProfile.name + 'さん！お名前を長期メモリにしっかり刻みました☕ これからもよろしくお願いします！';
       }
 
       var likeMatch = trimmedInput.match(/(?:私|僕|俺|わたし|ぼく|おれ)は([^\s。！!？?、]+)が(?:好き|大好き|趣味)/);
@@ -1023,9 +1046,6 @@
       return '';
     }
 
-    // ==========================================
-    // ★A・B・C 全方向統合LLM応答エンジン
-    // ==========================================
     async function generateFullLLMReply(userInput) {
       var trimmed = userInput.trim();
       var normalized = trimmed.replace(/[（(][^）)]*[）)]/g, '').replace(/[！!？?。、\s]/g, '');
@@ -1033,14 +1053,12 @@
         ? memoryStore.userProfile.name + 'さん、'
         : '';
 
-      // 0. ユーザー情報の長期記憶学習（「私の名前は〇〇」「〇〇が好き」）
       var learnedUserNote = extractAndSaveUserMemory(trimmed);
       if (learnedUserNote) {
         saveToPermanentMemory();
         return learnedUserNote;
       }
 
-      // 1. 挨拶へのパーソナルChat応答
       if (/^(こんにちは|こんにちわ|こんばんは|こんばんわ|おはよう|おはようございます|やあ|ハロー|はじめまして|よろしく|おっす|ちわ)/.test(normalized)) {
         var pressureNote = (trimmed.indexOf('圧') !== -1) ? '（ビシッ！と背筋を伸ばしてご挨拶します！☕）\n' : '';
         var vocabCount = llmModel ? llmModel.vocabSize : 0;
@@ -1050,14 +1068,12 @@
         return pressureNote + userNamePrefix + 'こんにちは！単語トークナイザー＆2層Transformer搭載の「カフェ・LLM」へようこそ☕\n現在 ' + vocabCount + '語の単語辞書と ' + memoryStore.corpusText.length.toLocaleString() + '文字の知識を保持しています。' + likeHint;
       }
 
-      // 2. 自分の記憶を確認する質問（「私の名前覚えてる？」「私の好みは？」）
       if (/名前|好み|好きなもの|覚えてる/.test(normalized) && /私|僕|俺|わたし|ぼく|おれ/.test(normalized)) {
         var uName = memoryStore.userProfile.name || 'まだ聞いていないみたい';
         var uLikes = memoryStore.userProfile.likes.length > 0 ? memoryStore.userProfile.likes.join('・') : 'まだ登録なし';
-        return 'もちろん長期メモリに覚えていますよ☕\n・お名前：' + uName + '\n・好きなもの：' + uLikes + '\n（「私の名前は〇〇」「〇〇が好き」と教えてくれたらいつでも更新するよ！）';
+        return 'もちろん長期メモリに覚えていますよ☕\n・お名前：' + uName + '\n・好きなもの：' + uLikes + '\n（「私は〇〇と申します」「〇〇が好き」と教えてくれたらいつでも更新するよ！）';
       }
 
-      // 3. 日常の雑談・感情・ねぎらい・感想への自然なChat応答
       if (/^(ありがとう|ありがとうございます|サンキュー|助かった|すごい|賢い|いいね|最高|なるほど|へー|そうなんだ|面白い|おもしろい)/.test(normalized)) {
         if (memoryStore.lastDiscussedTopic) {
           return userNamePrefix + 'そう言ってもらえると嬉しいです☕ さっきの「' + memoryStore.lastDiscussedTopic + '」について、さらに詳しく掘り下げたり、別のテーマと比較したりもできますよ！';
@@ -1080,17 +1096,17 @@
       }
 
       if (/^(自己紹介|あなたは誰|君は誰|何ができる|機能)/.test(normalized)) {
-        return '私は全方向進化型「カフェ・LLM」です☕\n1. 【単語トークン＆2層Transformer】文字ではなく単語単位で文脈を学習し、脳みそ（重み）を永久保存します\n2. 【横断RAG推論】「AとBの違い」「〇〇と△△の共通点」のように複数テーマを比較・統合して答えます\n3. 【長期パーソナルメモリ】「私の名前は〇〇」「〇〇が好き」を覚えて会話に活かします！';
+        return '私は全方向進化型「カフェ・LLM」です☕\n1. 【単語トークン＆2層Transformer】文字ではなく単語単位で文脈を学習し、脳みそ（重み）を永久保存します\n2. 【横断RAG推論】「AとBの違い」「〇〇と△△の共通点」のように複数テーマを比較・統合して答えます\n3. 【長期パーソナルメモリ】「私は〇〇と申します」「〇〇が好き」を覚えて会話に活かします！';
       }
 
-      // 4. 進化ルートB：2つのテーマの比較・推論モード（「AとBの違い」「AとBの共通点」「AとBを比較」）
+      // 比較推論モード（「宇宙と地球の違い」など：テーマ名一致の正確な記事だけを使う！）
       var compareMatch = trimmed.match(/^(.+?)と(.+?)(?:の|について|を)?(?:違い|共通点|比較|関係|どっち|比べて)/);
       if (compareMatch && compareMatch[1] && compareMatch[2]) {
         var topicA = compareMatch[1].replace(/^(?:ねえ|あの|ところで)/, '').trim();
         var topicB = compareMatch[2].trim();
         memoryStore.lastDiscussedTopic = topicA;
 
-        var resA = searchMultiFactsInMemory([topicA], 0)[0];
+        var resA = searchMultiFactsInMemory([topicA], 0, true)[0];
         if (!resA) {
           var fetchedA = await fetchTopicFromWikipedia(topicA);
           if (fetchedA.text && fetchedA.titles.length > 0) {
@@ -1099,7 +1115,7 @@
           }
         }
 
-        var resB = searchMultiFactsInMemory([topicB], 0)[0];
+        var resB = searchMultiFactsInMemory([topicB], 0, true)[0];
         if (!resB) {
           var fetchedB = await fetchTopicFromWikipedia(topicB);
           if (fetchedB.text && fetchedB.titles.length > 0) {
@@ -1112,15 +1128,14 @@
           return userNamePrefix + '「' + topicA + '」と「' + topicB + '」の2つの知識を横断検索して比較推論しました☕\n\n' +
             '■ 【' + resA.topic + '】の特徴：\n' + resA.text + '\n\n' +
             '■ 【' + resB.topic + '】の特徴：\n' + resB.text + '\n\n' +
-            '💡 【LLM統合まとめ】：\n「' + resA.topic + '」と「' + resB.topic + '」はそれぞれ独自の役割や歴史を持っていますが、どちらも私たちの世界や知識を深く理解する上で欠かせない重要なテーマです。さらに詳しく知りたい方はどちらかを指定してくださいね！';
+            '💡 【LLM統合まとめ】：\n「' + resA.topic + '」と「' + resB.topic + '」はそれぞれ独自の性質やスケールを持っていますが、互いに関わり合いながら私たちの世界を形作っています。さらに詳しく知りたい方はどちらかを指定してくださいね！';
         }
       }
 
-      // 5. 文脈引き継ぎ：「もっと詳しく」「続き」への対応
       if (/^(もっと詳しく|もっと教えて|続き|つづき|それで|それから|詳しく|詳細)/.test(normalized)) {
         if (memoryStore.lastDiscussedTopic) {
           memoryStore.lastTopicOffset = (memoryStore.lastTopicOffset || 0) + 3;
-          var moreMatches = searchMultiFactsInMemory([memoryStore.lastDiscussedTopic], memoryStore.lastTopicOffset);
+          var moreMatches = searchMultiFactsInMemory([memoryStore.lastDiscussedTopic], memoryStore.lastTopicOffset, true);
           if (moreMatches.length > 0 && moreMatches[0].text) {
             return userNamePrefix + '「' + memoryStore.lastDiscussedTopic + '」の続きですね☕ 記憶にあるさらに詳しい情報をお伝えします！\n\n' + moreMatches[0].text;
           } else {
@@ -1129,7 +1144,6 @@
         }
       }
 
-      // 6. 文章作成モード（「〇〇の文章を作って」「それの文章を作って」）
       var writeMatch = trimmed.match(/^(.+?)(?:の|についての|に関する)?(?:文章|作文|紹介文|解説文|物語|ストーリー|スピーチ|まとめ)を?(?:作って|書いて|作成して|考えて|お願い)/);
       if (writeMatch && writeMatch[1]) {
         var rawWriteTopic = writeMatch[1].trim();
@@ -1138,7 +1152,7 @@
           : rawWriteTopic;
 
         memoryStore.lastDiscussedTopic = writeTopic;
-        var matchesForWrite = searchMultiFactsInMemory([writeTopic], 0);
+        var matchesForWrite = searchMultiFactsInMemory([writeTopic], 0, true);
         var fact = matchesForWrite.length > 0 ? matchesForWrite[0].text : '';
         if (!fact) {
           try {
@@ -1158,44 +1172,45 @@
         }
       }
 
-      // 7. メインの調査＆RAG推論モード（疑問文・単語入力・「〇〇について教えて」すべてに対応）
-      var queryClean = trimmed
-        .replace(/(?:について|を|とは|って|ってなに|って何|のことも)?(?:調べて|学んで|勉強して|検索して|学習して|教えて|解説して|説明して|知ってる|知りたい|何|なに|ですか|だよね|かな)[？?！!。]*$/g, '')
-        .replace(/[？?！!。、]/g, ' ')
-        .trim();
+      var isExplicitQuery = /(?:について|とは|ってなに|って何|調べて|学んで|勉強して|検索して|学習して|教えて|解説して|説明して|知ってる|知りたい|[？?])/.test(trimmed);
+      var isShortNounInput = (normalized.length >= 2 && normalized.length <= 10 && !/(?:ですね|だよ|だな|ます|ました|はは|笑|！|!|だめ|もう)/.test(trimmed));
 
-      var keywords = queryClean.split(/\s+/).filter(function(w) { return w.length >= 2; });
-      var targetKeyword = keywords[0] || normalized;
+      if (isExplicitQuery || isShortNounInput) {
+        var queryClean = trimmed
+          .replace(/(?:について|を|とは|って|ってなに|って何|のことも)?(?:調べて|学んで|勉強して|検索して|学習して|教えて|解説して|説明して|知ってる|知りたい|何|なに|ですか|だよね|かな)[？?！!。]*$/g, '')
+          .replace(/[？?！!。、]/g, ' ')
+          .trim();
 
-      if (targetKeyword && targetKeyword.length >= 2) {
-        memoryStore.lastDiscussedTopic = targetKeyword;
-        memoryStore.lastTopicOffset = 0;
+        var keywords = queryClean.split(/\s+/).filter(function(w) { return w.length >= 2; });
+        var targetKeyword = keywords[0] || normalized;
 
-        // まず自分の記憶（knowledge.txt）から複数関連知識を横断検索
-        var ragMatches = searchMultiFactsInMemory(keywords.length > 0 ? keywords : [targetKeyword], 0);
-        if (ragMatches.length > 0) {
-          var replyBody = userNamePrefix + '「' + targetKeyword + '」についてknowledge.txtの知識ベースを横断検索しました☕\n\n' +
-            '■ 【' + ragMatches[0].topic + '】\n' + ragMatches[0].text;
-          if (ragMatches.length > 1) {
-            replyBody += '\n\n🔗 【関連する記憶：' + ragMatches[1].topic + '】\n' + ragMatches[1].text;
+        if (targetKeyword && targetKeyword.length >= 2) {
+          memoryStore.lastDiscussedTopic = targetKeyword;
+          memoryStore.lastTopicOffset = 0;
+
+          var ragMatches = searchMultiFactsInMemory(keywords.length > 0 ? keywords : [targetKeyword], 0, true);
+          if (ragMatches.length > 0) {
+            var replyBody = userNamePrefix + '「' + targetKeyword + '」についてknowledge.txtの知識ベースから正確な記事を見つけました☕\n\n' +
+              '■ 【' + ragMatches[0].topic + '】\n' + ragMatches[0].text;
+            if (ragMatches.length > 1) {
+              replyBody += '\n\n🔗 【関連する記憶：' + ragMatches[1].topic + '】\n' + ragMatches[1].text;
+            }
+            return replyBody;
           }
-          return replyBody;
+
+          trainStatusEl.textContent = '🔍 Wikipediaで「' + targetKeyword + '」を自動調査＆LLM学習中...';
+          try {
+            var topicData = await fetchTopicFromWikipedia(targetKeyword);
+            if (topicData.text && topicData.titles.length > 0) {
+              trainAndGrowMemory(topicData.text, topicData.titles, null, true);
+              return userNamePrefix + '「' + targetKeyword + '」についてWikipediaから新しく調査し、knowledge.txtと2層Transformerの脳みそに記憶しました☕\n\n【調査結果：' + topicData.titles[0] + '】\n' + topicData.summaryForReply;
+            }
+          } catch (e) {}
         }
-
-        // 記憶になければ、その場で自動的にWikipediaを検索して学習＆knowledge.txt追記＆回答！
-        trainStatusEl.textContent = '🔍 Wikipediaで「' + targetKeyword + '」を自動調査＆LLM学習中...';
-        try {
-          var topicData = await fetchTopicFromWikipedia(targetKeyword);
-          if (topicData.text && topicData.titles.length > 0) {
-            trainAndGrowMemory(topicData.text, topicData.titles, null, true);
-            return userNamePrefix + '「' + targetKeyword + '」についてWikipediaから新しく調査し、knowledge.txtと2層Transformerの脳みそに記憶しました☕\n\n【調査結果：' + topicData.titles[0] + '】\n' + topicData.summaryForReply;
-          }
-        } catch (e) {}
       }
 
-      // 8. 自由なつぶやきへのLLM連想付きChat返答
-      var neuralHint = llmModel ? llmModel.generateTokenContinuation(trimmed, 10) : '';
-      return userNamePrefix + '「' + trimmed + '」ですね☕ なるほど〜！（LLMの連想：「' + neuralHint + '」）\n詳しく調べたい言葉や、比較したい2つのテーマがあればいつでも聞いてくださいね！';
+      var neuralHint = llmModel ? llmModel.generateTokenContinuation(trimmed, 8) : '';
+      return userNamePrefix + 'あはは、「' + trimmed + '」ですね☕ 思わず笑っちゃいました！（LLMの連想：「' + neuralHint + '」）\n何か調べてほしい言葉があるときは「〇〇について教えて」や「〇〇とは？」と聞いてくれたら今度はバッチリ正確に調べてきますよ！';
     }
 
     function addMessageImmediate(text, sender) {
@@ -1327,7 +1342,6 @@
         }
       });
 
-      // 前回の重み（savedWeights）を引き継いで2層Transformerを継続学習！
       var prevWeights = llmModel ? llmModel.exportWeights() : memoryStore.savedWeights;
       var nextModel = new CafeDeepLLM(memoryStore.corpusText, prevWeights);
       var step = 0;
@@ -1392,9 +1406,8 @@
 
     async function bootAI() {
       try {
-        if (!getSavedToken()) {
-          githubConfigPanel.style.display = 'block';
-        }
+        // 制作者以外には設定画面を見せないため、自動では開かない
+        githubConfigPanel.style.display = 'none';
 
         var loaded = await loadFromUnlimitedStorage();
         if (loaded) {
@@ -1430,7 +1443,7 @@
 
         var isFirstEver = (!memoryStore.corpusText || memoryStore.corpusText.length <= 15);
         var greeting = isFirstEver
-          ? 'こんにちは！全方向進化した「カフェ・LLM」へようこそ☕\n単語トークナイザー・2層Transformer・横断比較推論・長期記憶を搭載したよ！「宇宙と地球の違い」や「私の名前は〇〇」「〇〇について教えて」など何でも試してみてね！'
+          ? 'こんにちは！全方向進化した「カフェ・LLM」へようこそ☕\n単語トークナイザー・2層Transformer・横断比較推論・長期記憶を搭載したよ！「私は〇〇と申します」や「宇宙と地球の違い」「〇〇について教えて」など何でも試してみてね！'
           : null;
 
         trainAndGrowMemory(fetched.text, fetched.titles, greeting, false);
