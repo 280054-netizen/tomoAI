@@ -396,12 +396,12 @@
     // ★AI自身が自己診断・自己書き換えで調整するパラメータ領域
     // ==========================================
     /* SELF_TUNED_CONFIG_START */
-    var SELF_CODE_VERSION = 2;
+    var SELF_CODE_VERSION = 3;
     var TRANSFORMER_LAYERS = 5;
     var RECENT_BLOCK_WINDOW = 6;
-    var MAX_VOCAB_SIZE = 1800;
+    var MAX_VOCAB_SIZE = 2100;
     var LEARNING_RATE = 0.045;
-    var LAST_SELF_REPAIR_NOTE = '5層Transformer＆直近単語ブロック搭載';
+    var LAST_SELF_REPAIR_NOTE = '語彙上限を 1800 → 2100語へ自己拡張';
     /* SELF_TUNED_CONFIG_END */
 
     var FETCH_ARTICLE_COUNT = 3;
