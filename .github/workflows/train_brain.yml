@@ -1,1 +1,307 @@
+name: ☕ カフェ・LLM クラウド自動特訓（8層Transformer学習）
 
+on:
+
+# 1. 日常会話.txt や knowledge.txt が更新されたときに自動特訓
+
+push:
+paths:
+\- '日常会話.txt'
+\- 'knowledge.txt'
+\- '.github/workflows/train_brain.yml'
+
+# 2. 毎日日本時間 朝3:00 (UTC 18:00) に自動で反復特訓
+
+schedule:
+\- cron: '0 18 \* \* \*'
+
+# 3. GitHubの「Actions」タブからいつでも手動で特訓ボタンを押せる
+
+workflow_dispatch:
+
+permissions:
+contents: write
+
+jobs:
+train-cafe-llm:
+runs-on: ubuntu-latest
+steps:
+\- name: 📥 リポジトリの最新データを取得
+uses: actions/checkout@v4
+
+````
+  - name: ⚡ Node.js 環境をセットアップ
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+
+  - name: 🧠 クラウドPC上で8層・48次元Transformerをエポック特訓
+    run: |
+      node << 'EOF'
+      const fs = require('fs');
+
+      const TRANSFORMER_LAYERS = 8;
+      const EMBED_DIM = 48;
+      const CONTEXT_SIZE = 8;
+      const MAX_VOCAB_SIZE = 5000;
+      const LEARNING_RATE = 0.032;
+      const CLOUD_EPOCHS_PER_RUN = 25;
+      const CLOUD_KNOWLEDGE_STEPS = 4000;
+
+      function tokenizeJapanese(text) {
+        if (!text) return [];
+        const clean = text
+          .replace(/【[^】]*】/g, '')
+          .replace(/・[^：\n]+：/g, '')
+          .replace(/```[\s\S]*?```/g, '');
+        const matches = clean.match(/[一-龠々〆ヵヶ]{1,6}|[ァ-ヴー]{2,8}|[a-zA-Z]{2,10}|[ぁ-ん]{1,5}|[。、！？]/g);
+        return matches ? matches : Array.from(clean);
+      }
+
+      function cleanDailyChat(raw) {
+        if (!raw) return '';
+        return raw.split('\n')
+          .map(l => l.trim())
+          .filter(l => l && !/^=+$/.test(l) && !/^【[^】]+】$/.test(l))
+          .map(l => l.replace(/^・[^：]+：/, '').replace(/^〜/, ''))
+          .join('\n');
+      }
+
+      const dailyRaw = fs.existsSync('日常会話.txt') ? fs.readFileSync('日常会話.txt', 'utf8') : '';
+      const knowledgeRaw = fs.existsSync('knowledge.txt') ? fs.readFileSync('knowledge.txt', 'utf8') : '';
+      const dailyClean = cleanDailyChat(dailyRaw);
+
+      const baseFallback = 'おはよう！きょうは天気がとても心地よいね。朝のコーヒーをゆっくり飲もうか？\nこんにちは！のんびりおしゃべりしようね！';
+      const chatText = (dailyClean ? dailyClean + '\n' : '') + baseFallback;
+      const mergedText = chatText + '\n' + knowledgeRaw.slice(-80000);
+
+      const rawTokens = tokenizeJapanese(mergedText);
+      const chatTokens = tokenizeJapanese(chatText);
+
+      const freqMap = {};
+      for (const tk of rawTokens) freqMap[tk] = (freqMap[tk] || 0) + 1;
+      for (const ctk of chatTokens) freqMap[ctk] = (freqMap[ctk] || 0) + 50;
+
+      const sortedTokens = Object.keys(freqMap)
+        .sort((a, b) => freqMap[b] - freqMap[a])
+        .slice(0, MAX_VOCAB_SIZE - 1);
+
+      const vocab = ['<UNK>', ...sortedTokens];
+      const vocabSize = vocab.length;
+      const tokenToId = {};
+      vocab.forEach((tok, idx) => { tokenToId[tok] = idx; });
+
+      const dataIds = rawTokens.map(t => tokenToId[t] !== undefined ? tokenToId[t] : 0);
+      const chatIds = chatTokens.map(t => tokenToId[t] !== undefined ? tokenToId[t] : 0);
+
+      function createMatrix(rows, cols) {
+        const scale = Math.sqrt(2.0 / (rows + cols));
+        return Array.from({ length: rows }, () =>
+          Array.from({ length: cols }, () => (Math.random() * 2 - 1) * scale)
+        );
+      }
+
+      let tokenEmbed = createMatrix(vocabSize, EMBED_DIM);
+      let posEmbed = createMatrix(CONTEXT_SIZE, EMBED_DIM);
+      let layers = Array.from({ length: TRANSFORMER_LAYERS }, () => ({
+        Wq: createMatrix(EMBED_DIM, EMBED_DIM),
+        Wk: createMatrix(EMBED_DIM, EMBED_DIM),
+        Wv: createMatrix(EMBED_DIM, EMBED_DIM),
+        Wff1: createMatrix(EMBED_DIM, EMBED_DIM),
+        Wff2: createMatrix(EMBED_DIM, EMBED_DIM)
+      }));
+      let Wout = createMatrix(EMBED_DIM, vocabSize);
+
+      let prevEpochs = 0;
+      let prevSteps = 0;
+
+      if (fs.existsSync('brain_weights.json')) {
+        try {
+          const prev = JSON.parse(fs.readFileSync('brain_weights.json', 'utf8'));
+          prevEpochs = Number(prev.cloudChatEpochs || 0);
+          prevSteps = Number(prev.cloudTotalSteps || 0);
+          const pw = prev.weights;
+          if (pw && Array.isArray(pw.vocab) && pw.posEmbed && pw.posEmbed.length === CONTEXT_SIZE && pw.posEmbed[0].length === EMBED_DIM) {
+            posEmbed = pw.posEmbed;
+            if (Array.isArray(pw.layers) && pw.layers.length === TRANSFORMER_LAYERS) {
+              layers = pw.layers;
+            }
+            const oldMap = {};
+            pw.vocab.forEach((t, i) => { oldMap[t] = i; });
+            vocab.forEach((tok, newId) => {
+              const oldId = oldMap[tok];
+              if (oldId !== undefined && pw.tokenEmbed[oldId] && pw.tokenEmbed[oldId].length === EMBED_DIM) {
+                tokenEmbed[newId] = pw.tokenEmbed[oldId].slice();
+                for (let d = 0; d < EMBED_DIM; d++) {
+                  if (pw.Wout[d] && pw.Wout[d][oldId] !== undefined) {
+                    Wout[d][newId] = pw.Wout[d][oldId];
+                  }
+                }
+              }
+            });
+          }
+        } catch (e) {
+          console.log('初回学習として新規初期化します');
+        }
+      }
+
+      function softmax(arr) {
+        const maxVal = Math.max(...arr);
+        const exps = arr.map(v => Math.exp(v - maxVal));
+        const sum = exps.reduce((a, b) => a + b, 0);
+        return exps.map(e => e / sum);
+      }
+
+      function layerNorm(vec) {
+        const mean = vec.reduce((a, b) => a + b, 0) / vec.length;
+        const variance = vec.reduce((a, b) => a + (b - mean) ** 2, 0) / vec.length;
+        const std = Math.sqrt(variance + 1e-5);
+        return vec.map(v => (v - mean) / std);
+      }
+
+      function matMul(A, B) {
+        const rowsA = A.length, colsA = A[0].length, colsB = B[0].length;
+        const res = Array.from({ length: rowsA }, () => new Array(colsB).fill(0));
+        for (let i = 0; i < rowsA; i++) {
+          for (let k = 0; k < colsA; k++) {
+            const aik = A[i][k];
+            for (let j = 0; j < colsB; j++) {
+              res[i][j] += aik * B[k][j];
+            }
+          }
+        }
+        return res;
+      }
+
+      function runBlock(X, layerObj) {
+        const seqLen = X.length;
+        const Q = matMul(X, layerObj.Wq);
+        const K = matMul(X, layerObj.Wk);
+        const V = matMul(X, layerObj.Wv);
+        const scale = Math.sqrt(EMBED_DIM);
+        const attnOut = [];
+
+        for (let i = 0; i < seqLen; i++) {
+          const scores = [];
+          for (let j = 0; j <= i; j++) {
+            let dot = 0;
+            for (let d = 0; d < EMBED_DIM; d++) dot += Q[i][d] * K[j][d];
+            scores.push(dot / scale);
+          }
+          const weights = softmax(scores);
+          const vec = new Array(EMBED_DIM).fill(0);
+          for (let j = 0; j <= i; j++) {
+            const w = weights[j];
+            for (let d = 0; d < EMBED_DIM; d++) vec[d] += w * V[j][d];
+          }
+          attnOut.push(layerNorm(vec.map((v, d) => v + X[i][d])));
+        }
+
+        const H = matMul(attnOut, layerObj.Wff1).map(row => row.map(v => v > 0 ? v : v * 0.05));
+        const ffOut = matMul(H, layerObj.Wff2);
+        return ffOut.map((row, i) => layerNorm(row.map((v, d) => v + attnOut[i][d])));
+      }
+
+      function trainOnSeq(inputIds, targetId, lrMul) {
+        const lr = LEARNING_RATE * lrMul;
+        const hiddenStates = [];
+        let X = inputIds.map((id, pos) => tokenEmbed[id].map((val, d) => val + posEmbed[pos][d]));
+        hiddenStates.push(X);
+        for (let l = 0; l < TRANSFORMER_LAYERS; l++) {
+          X = runBlock(X, layers[l]);
+          hiddenStates.push(X);
+        }
+        const lastHidden = X[X.length - 1];
+        const logits = new Array(vocabSize).fill(0);
+        for (let v = 0; v < vocabSize; v++) {
+          for (let d = 0; d < EMBED_DIM; d++) logits[v] += lastHidden[d] * Wout[d][v];
+        }
+        const probs = softmax(logits);
+        const dLogits = probs.slice();
+        dLogits[targetId] -= 1.0;
+
+        const dHidden = new Array(EMBED_DIM).fill(0);
+        for (let d = 0; d < EMBED_DIM; d++) {
+          for (let v = 0; v < vocabSize; v++) {
+            dHidden[d] += dLogits[v] * Wout[d][v];
+            Wout[d][v] -= lr * lastHidden[d] * dLogits[v];
+          }
+        }
+
+        const lastPos = inputIds.length - 1;
+        const lastTokenId = inputIds[lastPos];
+        for (let l = TRANSFORMER_LAYERS - 1; l >= 0; l--) {
+          const layerInput = hiddenStates[l][lastPos];
+          const layerScale = 0.25 / (TRANSFORMER_LAYERS - l);
+          const layerObj = layers[l];
+          for (let d2 = 0; d2 < EMBED_DIM; d2++) {
+            const grad = dHidden[d2];
+            for (let d3 = 0; d3 < EMBED_DIM; d3++) {
+              const baseGrad = lr * layerScale * layerInput[d3] * grad;
+              layerObj.Wff2[d3][d2] -= baseGrad;
+              layerObj.Wff1[d3][d2] -= baseGrad * 0.8;
+              layerObj.Wv[d3][d2] -= baseGrad;
+              layerObj.Wq[d3][d2] -= baseGrad * 0.5;
+              layerObj.Wk[d3][d2] -= baseGrad * 0.5;
+            }
+          }
+        }
+        for (let d4 = 0; d4 < EMBED_DIM; d4++) {
+          tokenEmbed[lastTokenId][d4] -= lr * dHidden[d4];
+          posEmbed[lastPos][d4] -= lr * dHidden[d4];
+        }
+      }
+
+      let addedSteps = 0;
+      if (chatIds.length > CONTEXT_SIZE + 1) {
+        for (let ep = 0; ep < CLOUD_EPOCHS_PER_RUN; ep++) {
+          for (let i = 0; i <= chatIds.length - CONTEXT_SIZE - 1; i++) {
+            trainOnSeq(chatIds.slice(i, i + CONTEXT_SIZE), chatIds[i + CONTEXT_SIZE], 1.1);
+            addedSteps++;
+          }
+        }
+      }
+
+      if (dataIds.length > CONTEXT_SIZE + 1) {
+        for (let s = 0; s < CLOUD_KNOWLEDGE_STEPS; s++) {
+          const idx = Math.floor(Math.random() * (dataIds.length - CONTEXT_SIZE));
+          trainOnSeq(dataIds.slice(idx, idx + CONTEXT_SIZE), dataIds[idx + CONTEXT_SIZE], 0.9);
+          addedSteps++;
+        }
+      }
+
+      const nowJST = new Date(Date.now() + 9 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' JST';
+      const outputPayload = {
+        version: 1,
+        numLayers: TRANSFORMER_LAYERS,
+        embedDim: EMBED_DIM,
+        contextSize: CONTEXT_SIZE,
+        cloudChatEpochs: prevEpochs + CLOUD_EPOCHS_PER_RUN,
+        cloudTotalSteps: prevSteps + addedSteps,
+        cloudTrainedAt: nowJST,
+        weights: {
+          numLayers: TRANSFORMER_LAYERS,
+          embedDim: EMBED_DIM,
+          vocab,
+          tokenEmbed,
+          posEmbed,
+          layers,
+          Wout
+        }
+      };
+
+      fs.writeFileSync('brain_weights.json', JSON.stringify(outputPayload));
+      console.log('✅ クラウド学習完了！累計エポック:', outputPayload.cloudChatEpochs, '周 / 累計ステップ:', outputPayload.cloudTotalSteps);
+      EOF
+
+  - name: 💾 学習済み脳みそ（brain_weights.json）をリポジトリへ自動保存
+    run: |
+      git config user.name "Cafe-LLM Cloud Trainer"
+      git config user.email "actions@users.noreply.github.com"
+      git add brain_weights.json
+      if ! git diff --staged --quiet; then
+        git commit -m "☁️ Auto-train: クラウドPCで8層Transformerを特訓・brain_weights.json更新"
+        git push
+      fi
+
+````
