@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>☕ カフェ・LLM（純粋会話脳・8層Transformer・言葉吟味層・brain_weights.json連携版）</title>
+  <title>☕ カフェ・LLM（8層Transformer・言葉吟味層・純粋会話脳・入力優先ポーズ版）</title>
   <!-- ブラウザのタブに表示されるオリジナル「カフェAI」ファビコン（SVG） -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23fdf8f2' stroke='%238d6e63' stroke-width='4'/%3E%3Cpath d='M22 16 Q20 12 22 8 M32 15 Q30 11 32 7 M42 16 Q40 12 42 8' stroke='%23e67e22' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M16 24 H44 V38 C44 46 38 50 30 50 C22 50 16 46 16 38 Z' fill='%238d6e63'/%3E%3Cpath d='M44 27 H49 C52 28 54 30 54 33.5 C54 37 52 39 49 39 H44' stroke='%238d6e63' stroke-width='4' fill='none'/%3E%3Ccircle cx='25' cy='35' r='2.5' fill='%23fff'/%3E%3Ccircle cx='35' cy='35' r='2.5' fill='%23fff'/%3E%3Cpath d='M27 41 Q30 44 33 41' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
   <style>
@@ -174,7 +174,7 @@
       padding: 12px;
       margin-bottom: 12px;
       font-size: 0.82rem;
-      max-height: 240px;
+      max-height: 250px;
       overflow-y: auto;
       line-height: 1.55;
     }
@@ -343,7 +343,7 @@
       </svg>
       <h1>カフェ・LLM</h1>
     </div>
-    <div class="subtitle">純粋会話脳・8層Transformer・言葉吟味層・brain_weights.json優先ロード版</div>
+    <div class="subtitle">8層Transformer・言葉吟味層・純粋会話脳・入力優先ポーズ版</div>
   </header>
 
   <div class="card">
@@ -410,12 +410,12 @@
     // AI自身が自己診断・自己書き換えで調整するパラメータ領域
     // ==========================================
     /* SELF_TUNED_CONFIG_START */
-    var SELF_CODE_VERSION = 6;
+    var SELF_CODE_VERSION = 7;
     var TRANSFORMER_LAYERS = 8;
     var RECENT_BLOCK_WINDOW = 6;
     var MAX_VOCAB_SIZE = 5000;
     var LEARNING_RATE = 0.035;
-    var LAST_SELF_REPAIR_NOTE = 'Wikipedia単語汚染の完全遮断・純粋会話脳8層Transformer＆言葉吟味層強化版';
+    var LAST_SELF_REPAIR_NOTE = '新DB隔離・Wikipedia単語完全遮断・文頭助詞ブロック＆言葉吟味フォールバック搭載版';
     /* SELF_TUNED_CONFIG_END */
 
     var FETCH_ARTICLE_COUNT = 3;
@@ -427,34 +427,42 @@
     var BATCH_PER_FRAME = 18;
     var TRAIN_FRAME_INTERVAL_MS = 32;
     var IDLE_RESUME_DELAY_MS = 2500;
-    var CANDIDATE_COUNT = 7;
+    var CANDIDATE_TEMPERATURES = [0.45, 0.55, 0.65, 0.75, 0.85, 0.95];
     var TYPING_SPEED_MS = 16;
-    var DB_NAME = 'CafeUltraLLM8LayerDB';
+
+    // 古いWikipedia汚染キャッシュを完全に無視するための新しいDB・ストレージキー
+    var DB_NAME = 'CafeUltraLLM8LayerPureChatDB';
     var DB_STORE = 'llmStateStore';
-    var STORAGE_KEY = 'cafe_ultra_llm_8layer_v1';
+    var STORAGE_KEY = 'cafe_ultra_llm_8layer_pure_v2';
+
+    // 文頭および句読点直後に絶対に出現させてはいけない助詞・助動詞・接尾辞・句読点
+    var FORBIDDEN_INITIAL_PARTICLE_REGEX = /^(が|は|を|に|へ|と|で|や|の|も|から|まで|より|だよ|だね|です|ます|だ|よ|ね|な|か|し|て|た|れ|ろ|さ|ぞ|ぜ|わ|。|、|！|？)/;
+    var POST_PUNCT_PARTICLE_REGEX = /[。、！？](?:が|は|を|に|へ|と|で|や|の|も|から|まで|より|だよ|だね|です|ます|だ|よ|ね|な|か|し|て|た|れ|ろ|さ|ぞ|ぜ|わ|。|、|！|？)/;
 
     // ==========================================
     // 純粋な日常会話ベースコーパス（Wikipedia単語は一切混ぜない）
     // ==========================================
     var BASE_CHAT_CORPUS = [
       'こんにちは！ゆっくりしていってね。今ちょうど美味しいコーヒーが淹れ終わったところだよ！',
-      'こんにちは！今日も来てくれてうれしいよ。のんびり楽しくおしゃべりしようね！',
+      'こんにちは！今日も来てくれてうれしいな！のんびり楽しくおしゃべりしようね！',
       'おはよう！今日もいい天気だね。朝のコーヒーをゆっくり飲もうか？',
-      'こんばんは！夜のリラックスタイムだね。今日はどんな一日だった？',
+      'こんばんは！夜のリラックスタイムだね。今日はどんな一日だったかな？',
       'やっほー！元気にしてた？今日もいっぱい楽しいお話をしようね！',
-      '今日はいい天気だね。本当だね、風が心地よくてお散歩したくなる気分だよ！',
-      'ちょっと疲れたかも。無理しないでゆっくり休もうね。温かいカフェラテでも淹れようか？',
-      '最近どう？おかげさまで毎日少しずつ新しい言葉を覚えて楽しく過ごしてるよ！そっちはどう？',
+      '今日はいい天気だね！風が心地よくてお散歩したくなる気分だよ。',
+      '本当だね！そう言ってもらえるとすごくうれしいな！',
+      'そうだね、いっしょにのんびり考えようね！',
+      'ちょっと疲れたときは、無理しないでゆっくり休もうね！温かいカフェラテでも淹れようか？',
+      '最近どう？おかげさまで毎日少しずつ新しい言葉を覚えて楽しく過ごしてるよ！そっちはどうかな？',
       '面白い話しようよ！いいね、最近気になってることとか好きなゲームやアニメの話でもしようか？',
       'お腹すいたな。焼きたてのトーストと甘いパンケーキの香りがしてきそうだね！',
-      '眠くなってきた。目を閉じて少しリラックスするのも大事だよ。無理は禁物だね。',
-      'なるほど、そういう考え方もあるんだね。すごく納得したよ！もっと詳しく聞かせてほしいな。',
-      'すごいね！そのアイデアはワクワクするよ。一緒に形にしていけたら最高だね！',
-      'ありがとう！そう言ってもらえるとすごく嬉しいよ。いつでも力になるからね。',
+      '眠くなってきたときは、目を閉じて少しリラックスするのも大事だよ。無理は禁物だね！',
+      'なるほど、そういう考え方もあるんだね！すごく納得したよ。もっと詳しく聞かせてほしいな！',
+      'すごいね！そのアイデアはワクワクするよ。いっしょに形にしていけたら最高だね！',
+      'ありがとう！そう言ってもらえるとすごくうれしいな！いつでも力になるからね。',
       '暇だなあ。それなら面白いイラストを描いてみたり、気になることを何でも話してみようよ！',
-      'わかるわかる！その気持ちすごくよくわかるよ。一緒にのんびり考えようね。',
-      'やったね！頑張った成果が出て本当に良かったね。お祝いに乾杯しよう！',
-      'どうしようかな。焦らなくても大丈夫だよ、一番ワクワクする方を選んでみよう！'
+      'わかるわかる！その気持ちすごくよくわかるよ。いっしょに楽しい時間を作ろうね！',
+      'やったね！頑張った成果が出て本当に良かったね。お祝いにカフェラテで乾杯しよう！',
+      '焦らなくても大丈夫だよ、一番ワクワクする方を選んでみようね！'
     ].join('\n');
 
     var statusContainer = document.getElementById('status-container');
@@ -474,11 +482,12 @@
     var detectedRuntimeErrors = [];
     var lastCritiqueReport = '起動直後のためまだ会話生成前です';
     var cloudReloadMessage = '';
+    var lastFallbackReplyText = '';
 
     // ==========================================
     // 入力優先ポーズ制御フラグ
     // ==========================================
-    var isInputFocused = false;
+    var isUserFocusedOnInput = false;
     var isUserTyping = false;
     var isComposingIME = false;
     var allowPostSendLearning = false;
@@ -486,7 +495,7 @@
 
     var memoryStore = {
       topics: [],
-      corpusText: '',
+      ragCorpusText: '',
       dailyChatCorpusText: '',
       chatHistory: [],
       lastDiscussedTopic: '',
@@ -520,7 +529,7 @@
 
     function shouldPauseBackgroundLearning() {
       if (isUserTyping || isComposingIME) return true;
-      if (isInputFocused && !allowPostSendLearning) return true;
+      if (isUserFocusedOnInput && !allowPostSendLearning) return true;
       return false;
     }
 
@@ -534,12 +543,12 @@
     }
 
     promptInput.addEventListener('focus', function() {
-      isInputFocused = true;
+      isUserFocusedOnInput = true;
       allowPostSendLearning = false;
     });
 
     promptInput.addEventListener('blur', function() {
-      isInputFocused = false;
+      isUserFocusedOnInput = false;
       isUserTyping = false;
       isComposingIME = false;
     });
@@ -559,7 +568,7 @@
     });
 
     // ==========================================
-    // 安全なJSON解析＆通信ヘルパー
+    // 安全なJSON解析＆通信ヘルパー（position 3エラー防止）
     // ==========================================
     function safeParseJsonText(rawText) {
       if (!rawText || typeof rawText !== 'string') return null;
@@ -661,8 +670,8 @@
       document.getElementById('gh-token-input').value = '';
       document.getElementById('gh-badge').textContent = '✅ 保存完了！自己進化＆自己コード修復が有効になりました';
       githubConfigPanel.style.display = 'none';
-      if (memoryStore.corpusText) {
-        enqueueGitHubWrite(memoryStore.corpusText.slice(-2000));
+      if (memoryStore.ragCorpusText) {
+        enqueueGitHubWrite(memoryStore.ragCorpusText.slice(-2000));
       }
     }
 
@@ -725,7 +734,7 @@
         issues.push(TRANSFORMER_LAYERS + '層Transformerの重みに数値異常(NaN)を検知');
         fixes.newLearningRate = Math.max(0.01, Number((LEARNING_RATE * 0.6).toFixed(4)));
         fixes.repairNote = '学習率を ' + LEARNING_RATE + ' → ' + fixes.newLearningRate + ' に下げて数値安定化修復';
-        llmModel = new CafeUltraTransformer(null, buildChatCorpusText());
+        llmModel = new CafeUltraTransformer(null, buildPureChatCorpusText());
       }
 
       if (detectedRuntimeErrors.length > 0) {
@@ -737,9 +746,9 @@
       }
 
       if (llmModel && llmModel.vocabSize >= MAX_VOCAB_SIZE - 5 && MAX_VOCAB_SIZE < 8000) {
-        issues.push('厳選会話語彙辞書が上限(' + MAX_VOCAB_SIZE + '語)に到達');
+        issues.push('純粋会話語彙辞書が上限(' + MAX_VOCAB_SIZE + '語)に到達');
         fixes.newVocabSize = MAX_VOCAB_SIZE + 500;
-        fixes.repairNote = '厳選会話語彙上限を ' + MAX_VOCAB_SIZE + ' → ' + fixes.newVocabSize + '語へ自己拡張';
+        fixes.repairNote = '純粋会話語彙上限を ' + MAX_VOCAB_SIZE + ' → ' + fixes.newVocabSize + '語へ自己拡張';
       }
 
       return {
@@ -955,8 +964,8 @@
     function updateStatusDisplay() {
       var vocabCount = llmModel ? llmModel.vocabSize : 0;
       var jsonBadge = (memoryStore.cloudBrainStatus === 'loaded')
-        ? '☁️ brain_weights.json優先読込済(特訓' + (memoryStore.cloudEpochs || 0) + '周)'
-        : '📂 brain_weights.json未作成(純粋会話学習稼働中)';
+        ? '☁️ 純粋会話brain_weights読込済(' + (memoryStore.cloudEpochs || 0) + '周)'
+        : '✨ 純粋会話脳8層稼働中';
       trainStatusEl.textContent = '🧠 純粋会話' + TRANSFORMER_LAYERS + '層LLM(v' + SELF_CODE_VERSION + ') / 会話語彙:' + vocabCount + '語 / 会話エポック:' + (memoryStore.chatEpochCount || 0) + '周 / ' + jsonBadge + '｜' + ghSyncStatus;
     }
 
@@ -984,7 +993,7 @@
             getReq.onerror = function() { resolve(null); };
           } catch (e) { resolve(null); }
         });
-        if (loaded && loaded.corpusText) return loaded;
+        if (loaded) return loaded;
       }
       try {
         var savedJson = localStorage.getItem(STORAGE_KEY);
@@ -1019,36 +1028,36 @@
         .replace(/【[^】]*】/g, '')
         .replace(/・[^：\n]+：/g, '')
         .replace(/```[\s\S]*?```/g, '');
-      var pattern = /[一-龠々〆ヵヶ]{1,6}|[ァ-ヴー]{2,8}|[a-zA-Z]{2,10}|[ぁ-ん]{1,5}|[。、！？]/g;
+      var pattern = /[一-龠々〆ヵヶ]{1,6}[ぁ-ん]{0,3}|[ァ-ヴー]{2,8}|[a-zA-Z]{2,10}|[ぁ-ん]{2,6}|[ぁ-ん]|[。、！？]/g;
       var matches = cleanForTokens.match(pattern);
       return matches ? matches : Array.from(cleanForTokens);
     }
 
     // ==========================================
-    // 純粋会話コーパス構築（日常会話.txt + BASE_CHAT_CORPUS + 汚染のない純粋チャット履歴のみ）
-    // Wikipediaやknowledge.txtは一切混ぜない
+    // 純粋会話コーパス構築（日常会話.txt + BASE_CHAT_CORPUS + クリーンな短い会話履歴のみ）
+    // knowledge.txt や Wikipedia テキストは絶対に混ぜない
     // ==========================================
-    function buildChatCorpusText() {
+    function buildPureChatCorpusText() {
       var dailyChatPart = memoryStore.dailyChatCorpusText ? memoryStore.dailyChatCorpusText + '\n' : '';
       var recentChatLines = (memoryStore.chatHistory || [])
         .slice(-24)
         .map(function(item) { return (item.text || '').replace(/☕/g, '').trim(); })
         .filter(function(t) {
-          if (t.length < 2 || t.length > 65) return false;
+          if (t.length < 3 || t.length > 65) return false;
           if (t.indexOf('```') !== -1 || t.indexOf('■ ') !== -1) return false;
           if (t.indexOf('記憶から引っ張ってきたよ') !== -1 || t.indexOf('調べて覚えたよ') !== -1) return false;
           if (t.indexOf('自己診断') !== -1 || t.indexOf('index.html') !== -1) return false;
+          if (FORBIDDEN_INITIAL_PARTICLE_REGEX.test(t) || POST_PUNCT_PARTICLE_REGEX.test(t)) return false;
           return true;
         });
       return dailyChatPart + BASE_CHAT_CORPUS + (recentChatLines.length > 0 ? '\n' + recentChatLines.join('\n') : '');
     }
 
     // ==========================================
-    // 純粋会話脳 8層Deep Transformer + 言葉吟味層（Critique Layer）
-    // Wikipedia記事の語彙・重み学習を完全に排除し、純粋会話データのみで学習・推論する
+    // 純粋会話脳 8層Deep Transformer + 文頭助詞ガード + 言葉吟味層（Critique Layer）
     // ==========================================
     function CafeUltraTransformer(previousWeights, chatCorpusText) {
-      var pureChatText = chatCorpusText || buildChatCorpusText();
+      var pureChatText = chatCorpusText || buildPureChatCorpusText();
       var rawChatTokens = tokenizeJapanese(pureChatText);
 
       var freqMap = {};
@@ -1074,7 +1083,6 @@
       this.chatData = rawChatTokens.map(function(tok) {
         return (self.tokenToId[tok] !== undefined) ? self.tokenToId[tok] : 0;
       });
-      // 学習データ（this.data）も純粋な会話データのみに設定（Wikipedia完全排除）
       this.data = this.chatData.slice();
 
       this.chatEpochCursor = memoryStore.chatEpochCursor || 0;
@@ -1099,7 +1107,7 @@
 
       this.Wout = this.createMatrix(EMBED_DIM, this.vocabSize);
 
-      if (previousWeights) {
+      if (previousWeights && previousWeights.pureChatOnly === true) {
         this.importWeights(previousWeights);
       }
     }
@@ -1119,6 +1127,7 @@
 
     CafeUltraTransformer.prototype.exportWeights = function() {
       return {
+        pureChatOnly: true,
         numLayers: this.numLayers,
         embedDim: EMBED_DIM,
         vocab: this.vocab,
@@ -1130,7 +1139,7 @@
     };
 
     CafeUltraTransformer.prototype.importWeights = function(saved) {
-      if (!saved || !saved.vocab) return;
+      if (!saved || saved.pureChatOnly !== true || !saved.vocab) return;
       if (saved.posEmbed && saved.posEmbed.length === CONTEXT_SIZE && saved.posEmbed[0].length === EMBED_DIM) {
         this.posEmbed = saved.posEmbed;
       }
@@ -1143,7 +1152,6 @@
         }
       }
 
-      // 純粋会話語彙（this.vocab）に一致する単語の重みだけを選択インポートし、外部Wikipedia語彙の混入を完全ブロック
       var oldMap = {};
       for (var i = 0; i < saved.vocab.length; i++) {
         oldMap[saved.vocab[i]] = i;
@@ -1318,11 +1326,11 @@
     };
 
     // ==========================================
-    // 純粋会話トークン限定候補生成（助詞連続・1文字ひらがな連続・句読点重複を厳格ブロック）
+    // 文頭助詞・句読点直後助詞の厳格ブロック付き候補生成
     // ==========================================
     CafeUltraTransformer.prototype.generateSingleCandidate = function(seedText, maxTokens, temperature) {
-      if (!maxTokens) maxTokens = 20;
-      if (!temperature) temperature = 0.68;
+      if (!maxTokens) maxTokens = 18;
+      if (!temperature) temperature = 0.65;
       var tokens = tokenizeJapanese(seedText);
       var self = this;
       var ids = tokens.map(function(t) { return self.tokenToId[t] !== undefined ? self.tokenToId[t] : 0; });
@@ -1346,17 +1354,17 @@
           if (idx === 0 || !tok || tok === '\n') return -1e9;
           if (recentBlockedIds.indexOf(idx) !== -1) return -1e9;
 
-          // 先頭トークンが句読点や助詞のみになるのを禁止
-          if (step === 0 && (/^[。、！？]$/.test(tok) || /^[がをにへでとからもやの]$/.test(tok))) {
+          // Step 0（文頭）では助詞・助動詞・接尾辞・句読点を完全禁止
+          if (step === 0 && FORBIDDEN_INITIAL_PARTICLE_REGEX.test(tok)) {
             return -1e9;
           }
 
-          // 句読点の連続（「、。」「。、」など）をブロック
-          if (/^[。、！？]$/.test(prevWord) && /^[。、！？]$/.test(tok)) {
+          // 句読点（「。」「、」「！」「？」）の直後でも助詞・助動詞・接尾辞・句読点を完全禁止（「。は」等を防止）
+          if (prevWord && /[。、！？]$/.test(prevWord) && FORBIDDEN_INITIAL_PARTICLE_REGEX.test(tok)) {
             return -1e9;
           }
 
-          // 助詞の連続（「がの」「をに」「はが」「にを」「での」「への」「からを」「までが」等）をブロック
+          // 助詞の連続をブロック
           if (prevWord && /(?:がの|をに|はが|にを|での|への|からを|までが|とが|もを|がを|にが|をは|がは)/.test(prevWord + tok)) {
             return -1e9;
           }
@@ -1365,7 +1373,7 @@
           var isSingleHiragana = /^[ぁ-ん]$/.test(tok);
           if (isSingleHiragana && singleHiraganaStreak >= 1) return -1e9;
 
-          var bonus = (tok.length >= 2) ? 0.85 : -0.35;
+          var bonus = (tok.length >= 2) ? 0.9 : -0.4;
           return (l + bonus) / temperature;
         });
 
@@ -1391,7 +1399,7 @@
         prevWord = word;
 
         generated.push(word);
-        if ((word === '。' || word === '！' || word === '？') && generated.length >= 7) break;
+        if ((word === '。' || word === '！' || word === '？') && generated.length >= 6) break;
       }
 
       var resultText = generated.join('')
@@ -1400,7 +1408,12 @@
       if (resultText && !/[。！？]$/.test(resultText)) {
         resultText += '！';
       }
-      return { text: resultText, layer7Vec: lastLayer7Vec, layer8Vec: lastLayer8Vec };
+      return {
+        text: resultText,
+        temperature: temperature,
+        layer7Vec: lastLayer7Vec,
+        layer8Vec: lastLayer8Vec
+      };
     };
 
     CafeUltraTransformer.prototype.computeContextAlignment = function(seedText, outLayer7Vec, outLayer8Vec) {
@@ -1431,47 +1444,117 @@
     };
 
     // ==========================================
-    // 言葉吟味層（7候補採点・文法/助詞連続/1文字断片の厳格フィルタリング）
+    // 日常会話.txt / BASE_CHAT_CORPUS からの文脈適合自然会話フォールバック生成
     // ==========================================
-    CafeUltraTransformer.prototype.critiqueAndSelectBestResponse = function(seedText, maxTokens) {
-      var temperatures = [0.58, 0.64, 0.68, 0.72, 0.76, 0.80, 0.84];
+    function selectContextualNaturalChatFallback(userSeed) {
+      var trimmed = (userSeed || '').trim();
+      var poolText = (memoryStore.dailyChatCorpusText ? memoryStore.dailyChatCorpusText + '\n' : '') + BASE_CHAT_CORPUS;
+      var rawSentences = poolText.split('\n')
+        .map(function(line) { return line.trim(); })
+        .filter(function(line) {
+          return line.length >= 8 && line.length <= 60 && !FORBIDDEN_INITIAL_PARTICLE_REGEX.test(line) && !POST_PUNCT_PARTICLE_REGEX.test(line);
+        });
+
+      var contextualReplies = [];
+      if (/^(だね|そうだね|ほんと|本当|わかる|たしかに|うん)/.test(trimmed)) {
+        contextualReplies = [
+          '本当だね！そうやって共感し合えるのってすごくうれしいな！',
+          'そうだね！のんびりカフェラテでも飲みながらゆっくりおしゃべりしようね！',
+          'うんうん、その気持ちすごくよくわかるよ！いっしょに楽しい時間を作ろうね！'
+        ];
+      } else if (/進化|成長|賢く|学習|特訓/.test(trimmed)) {
+        contextualReplies = [
+          '任せてね！純粋会話8層Transformerと言葉吟味層で、おしゃべりするたびにどんどん成長していくよ！',
+          'ありがとう！もっと自然な日本語でお話できるように、裏側でもしっかり会話エポックを特訓中だよ！',
+          'ワクワクするね！いっしょにたくさんおしゃべりして、どんどん進化していくよ！'
+        ];
+      } else if (/眠い|ねむい|疲れ|つかれ|しんど/.test(trimmed)) {
+        contextualReplies = [
+          '無理しないでゆっくり休もうね！温かいカフェラテでも淹れてリラックスしようか？',
+          'お疲れさま！目を閉じて少し深呼吸するだけでも気分がすっきりするよ。'
+        ];
+      } else if (/お腹|おなか|すいた|食べ|コーヒー|ラテ|カフェ|パン/.test(trimmed)) {
+        contextualReplies = [
+          '焼きたてのトーストと甘いパンケーキ、それに淹れたてのカフェラテがぴったりだね！',
+          'いまちょうど香り高いコーヒーを淹れたところだよ！いっしょにほっと一息つこうね！'
+        ];
+      } else if (/楽しい|うれしい|嬉しい|最高|すごい|やった/.test(trimmed)) {
+        contextualReplies = [
+          'わあ、すごいね！そのワクワクする気持ち、ぼくまでうれしくなっちゃうよ！',
+          'やったね！いいことがあると一日がすごく明るく楽しくなるよね！'
+        ];
+      }
+
+      var searchPool = contextualReplies.length > 0 ? contextualReplies : rawSentences;
+      if (searchPool.length === 0) {
+        return 'ゆっくりしていってね！今日もいっしょに楽しくおしゃべりしようね！';
+      }
+
+      var filteredPool = searchPool.filter(function(s) { return s !== lastFallbackReplyText; });
+      if (filteredPool.length === 0) filteredPool = searchPool;
+
+      var picked = filteredPool[Math.floor(Math.random() * filteredPool.length)];
+      lastFallbackReplyText = picked;
+      return picked;
+    }
+
+    // ==========================================
+    // 言葉吟味層（6候補採点・文頭助詞/句読点後助詞/反復の厳格減点＆自然会話フォールバック）
+    // ==========================================
+    CafeUltraTransformer.prototype.critiqueAndSelectBestResponse = function(candidates, userSeed) {
       var scoredCandidates = [];
       var dailyChatRef = (memoryStore.dailyChatCorpusText || '') + '\n' + BASE_CHAT_CORPUS;
 
-      for (var i = 0; i < CANDIDATE_COUNT; i++) {
-        var temp = temperatures[i % temperatures.length];
-        var cand = this.generateSingleCandidate(seedText, maxTokens, temp);
+      for (var i = 0; i < candidates.length; i++) {
+        var cand = candidates[i];
         var txt = cand.text;
         var score = 50;
         var notes = [];
 
-        if (txt.length < 7) {
-          score -= 35;
-          notes.push('短すぎ減点');
-        } else if (txt.length >= 11 && txt.length <= 44) {
-          score += 16;
-          notes.push('適切な文長');
+        // 1. 文頭の助詞・助動詞・接尾辞・句読点は -100 点で即失格
+        if (!txt || FORBIDDEN_INITIAL_PARTICLE_REGEX.test(txt)) {
+          score -= 100;
+          notes.push('文頭助詞NG(-100)');
         }
 
-        // 助詞の連続・不自然な接続を厳格減点
-        if (/(?:がの|をに|はが|にを|での|への|からを|までが|とが|もを|がを|にが|をは|がは|、。|。、)/.test(txt)) {
-          score -= 55;
-          notes.push('助詞・句読点異常検知');
+        // 2. 句読点直後の助詞・助動詞・接尾辞（「。は」など）も -100 点で即失格
+        if (POST_PUNCT_PARTICLE_REGEX.test(txt)) {
+          score -= 100;
+          notes.push('句読点後助詞NG(-100)');
         }
 
-        // 1文字ひらがなが3連続以上する断片破綻を厳格減点
+        // 3. 文字や単語の不自然な反復ループも -100 点で即失格
+        if (/(.)\1{2,}/.test(txt) || /(.{2,6})\1/.test(txt)) {
+          score -= 100;
+          notes.push('反復ループNG(-100)');
+        }
+
+        // 4. 助詞同士の連続や意味不明な1文字ひらがな連鎖を減点
+        if (/(?:がの|をに|はが|にを|での|への|からを|までが|とが|もを|がを|にが|をは|がは)/.test(txt)) {
+          score -= 80;
+          notes.push('助詞連続NG(-80)');
+        }
         if (/[ぁ-ん]{1}[ぁ-ん]{1}[ぁ-ん]{1}/.test(txt) && !/(?:ありがとう|おはよう|こんにちは|こんばんは|よろしく|おしゃべり|のんびり|ゆっくり|わくわく|ニコニコ|いっしょに|なるほど|たしかに|わかるよ|うれしい|たのしい|おいしい|あたたかい|すずしい|かわいい|やさしい)/.test(txt)) {
-          score -= 20;
-          notes.push('断片連続注意');
+          score -= 60;
+          notes.push('断片連続NG(-60)');
         }
 
-        var dupMatch = txt.match(/(.{2,5})\1/);
-        if (dupMatch) {
-          score -= 35;
-          notes.push('反復ループ検知');
+        // 5. 適切な文長評価
+        if (txt.length >= 10 && txt.length <= 46) {
+          score += 12;
+          notes.push('適切文長(+12)');
+        } else if (txt.length < 7) {
+          score -= 40;
+          notes.push('短すぎ(-40)');
         }
 
-        // 純粋な会話コーパス内の自然な単語・フレーズとの一致を評価
+        // 6. 自然な会話語尾の加点（+25）
+        if (/(?:よ！|ね！|かな？|だよ。|だね！|うれしいな！|しようね！|しようか？|たいな！|だね。|よ。)$/.test(txt)) {
+          score += 25;
+          notes.push('自然会話語尾(+25)');
+        }
+
+        // 7. 純粋会話コーパス語彙との一致度
         var outTokens = tokenizeJapanese(txt);
         var chatWordHits = 0;
         for (var tIdx = 0; tIdx < outTokens.length; tIdx++) {
@@ -1479,38 +1562,48 @@
             chatWordHits++;
           }
         }
-        if (chatWordHits > 0) {
-          var chatBonus = Math.min(22, chatWordHits * 4);
-          score += chatBonus;
-          notes.push('純粋会話語+' + chatBonus);
+        if (chatWordHits >= 2) {
+          var vocabBonus = Math.min(18, chatWordHits * 4);
+          score += vocabBonus;
+          notes.push('会話語彙一致(+' + vocabBonus + ')');
         }
 
-        if (/(?:だね|だよ|しよう|かな|うれしい|楽しい|わかる|すごい|ありがとう|いいね|おう|ね！|よ！|カフェ|コーヒー|ラテ)/.test(txt)) {
-          score += 14;
-          notes.push('会話語尾加点');
-        }
-
-        var sim = this.computeContextAlignment(seedText, cand.layer7Vec, cand.layer8Vec);
-        var simScore = Math.round(sim * 20);
+        // 8. 第7層・第8層隠れ状態ベクトルの文脈コサイン類似度
+        var sim = this.computeContextAlignment(userSeed, cand.layer7Vec, cand.layer8Vec);
+        var simScore = Math.max(0, Math.round(sim * 25));
         score += simScore;
-        notes.push('7・8層文脈一致:' + simScore);
+        notes.push('7・8層文脈類似(+' + simScore + ')');
 
         scoredCandidates.push({
           text: txt,
           score: score,
-          temp: temp,
+          temp: cand.temperature,
           notes: notes.join('/')
         });
       }
 
       scoredCandidates.sort(function(a, b) { return b.score - a.score; });
       var winner = scoredCandidates[0];
-      lastCritiqueReport = '選抜候補(スコア' + winner.score + '点 / T=' + winner.temp + '): 「' + winner.text + '」[' + winner.notes + ']';
+      var SCORE_THRESHOLD = 72;
+
+      if (!winner || winner.score < SCORE_THRESHOLD) {
+        var fallbackText = selectContextualNaturalChatFallback(userSeed);
+        var topRawText = winner ? winner.text : 'なし';
+        var topRawScore = winner ? winner.score : 0;
+        lastCritiqueReport = '6候補最高スコア(' + topRawScore + '点 / T=' + (winner ? winner.temp : '-') + ' / 「' + topRawText + '」)が基準(' + SCORE_THRESHOLD + '点)未満のため、日常会話コーパスから最適文を選抜 → 「' + fallbackText + '」';
+        return fallbackText;
+      }
+
+      lastCritiqueReport = '6候補選抜合格(スコア' + winner.score + '点 / T=' + winner.temp + '): 「' + winner.text + '」[' + winner.notes + ']';
       return winner.text;
     };
 
     CafeUltraTransformer.prototype.generateChatResponse = function(seedText, maxTokens) {
-      return this.critiqueAndSelectBestResponse(seedText, maxTokens || 20);
+      var candidates = [];
+      for (var i = 0; i < CANDIDATE_TEMPERATURES.length; i++) {
+        candidates.push(this.generateSingleCandidate(seedText, maxTokens || 18, CANDIDATE_TEMPERATURES[i]));
+      }
+      return this.critiqueAndSelectBestResponse(candidates, seedText);
     };
 
     // ==========================================
@@ -1675,7 +1768,7 @@
     }
 
     // ==========================================
-    // Wikipedia取得（質問RAG検索辞書 memoryStore.corpusText 専用。重み学習には入れない）
+    // Wikipedia取得（質問RAG検索辞書 memoryStore.ragCorpusText 専用。脳の重み学習には一切混ぜない）
     // ==========================================
     async function fetchRandomWebArticles() {
       var randomUrl = 'https://ja.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=' + FETCH_ARTICLE_COUNT + '&prop=extracts&exintro&explaintext&format=json&origin=*';
@@ -1753,9 +1846,9 @@
 
     function storeKnowledgeInRagOnly(newText, newTitles) {
       var isAdded = false;
-      if (newText && memoryStore.corpusText.indexOf(newText.slice(0, 25)) === -1) {
-        var combined = (memoryStore.corpusText ? memoryStore.corpusText + '\n\n' : '') + newText;
-        memoryStore.corpusText = (MAX_MEMORY_CHARS === Infinity) ? combined : combined.slice(-MAX_MEMORY_CHARS);
+      if (newText && memoryStore.ragCorpusText.indexOf(newText.slice(0, 25)) === -1) {
+        var combined = (memoryStore.ragCorpusText ? memoryStore.ragCorpusText + '\n\n' : '') + newText;
+        memoryStore.ragCorpusText = (MAX_MEMORY_CHARS === Infinity) ? combined : combined.slice(-MAX_MEMORY_CHARS);
         isAdded = true;
       }
       if (Array.isArray(newTitles)) {
@@ -1773,7 +1866,7 @@
 
     function searchMultiFactsInMemory(keywords, sentenceOffset, requireExactTopic) {
       if (sentenceOffset === undefined) sentenceOffset = 0;
-      var lines = memoryStore.corpusText.split('\n');
+      var lines = (memoryStore.ragCorpusText || '').split('\n');
       var scoredMatches = [];
 
       for (var l = 0; l < lines.length; l++) {
@@ -1898,7 +1991,6 @@
       memoryStore.evolutionCount = (memoryStore.evolutionCount || 0) + 1;
 
       if (chatTurnCounter % 3 === 0) {
-        // 純粋会話エポック学習のみを実行（RAG知識は混ぜない）
         trainPureChatEpochInBackground(null, true);
       }
 
@@ -2044,7 +2136,6 @@
           try {
             var topicData = await fetchTopicFromWikipedia(targetKeyword);
             if (topicData.text && topicData.titles.length > 0) {
-              // Wikipediaの知識はRAG検索辞書にのみ保存し、純粋会話モデルの重みには混ぜない
               storeKnowledgeInRagOnly(topicData.text, topicData.titles);
               saveToPermanentMemory();
               updateStatusDisplay();
@@ -2057,16 +2148,8 @@
         }
       }
 
-      var prevContext = '';
-      if (memoryStore.chatHistory && memoryStore.chatHistory.length >= 2) {
-        var lastAiTurn = memoryStore.chatHistory[memoryStore.chatHistory.length - 2];
-        if (lastAiTurn && lastAiTurn.text) {
-          prevContext = lastAiTurn.text.slice(-20) + ' ';
-        }
-      }
-
       var directGenerated = llmModel
-        ? llmModel.generateChatResponse(prevContext + trimmed, 20)
+        ? llmModel.generateChatResponse(trimmed, 18)
         : 'うんうん、その話もっと聞かせてほしいな！';
 
       return {
@@ -2170,8 +2253,8 @@
     }
 
     function renderKnowledgePanel() {
-      var previewText = memoryStore.corpusText.slice(-3000);
-      var prefixNote = memoryStore.corpusText.length > 3000 ? '（※最新の3,000文字を抜粋表示中）\n\n' : '';
+      var previewText = (memoryStore.ragCorpusText || '').slice(-3000);
+      var prefixNote = (memoryStore.ragCorpusText || '').length > 3000 ? '（※最新の3,000文字を抜粋表示中）\n\n' : '';
       var vocabSize = llmModel ? llmModel.vocabSize : 0;
       var dailyChatChars = (memoryStore.dailyChatCorpusText || '').length;
       var userName = (memoryStore.userProfile && memoryStore.userProfile.name) || '未登録';
@@ -2181,11 +2264,11 @@
       if (memoryStore.cloudBrainStatus === 'loaded' && memoryStore.cloudBrainMeta) {
         var meta = memoryStore.cloudBrainMeta;
         jsonDetailHtml =
-          '・☁️ <b>brain_weights.json 状態: 優先読込済 ✅</b>（Wikipedia語彙は自動遮断・純粋会話重みのみ適用）<br>' +
+          '・☁️ <b>brain_weights.json 状態: 純粋会話モデル確認済 ✅</b><br>' +
           '　└ 特訓エポック数: <b>' + meta.epochs + '周</b> / 学習日時: <b>' + meta.trainedAt + '</b> / 構成: <b>' + meta.numLayers + '層・' + meta.embedDim + '次元</b><br>';
       } else {
         jsonDetailHtml =
-          '・📂 <b>brain_weights.json 状態: 未作成</b>（現在ブラウザ内の純粋会話8層Transformerで学習稼働中）<br>';
+          '・✨ <b>brain_weights.json 状態: 純粋会話DB（CafeUltraLLM8LayerPureChatDB）で独立稼働中</b>（旧Wikipedia混入ファイルは自動スキップ済）<br>';
       }
 
       var reloadNoteHtml = cloudReloadMessage
@@ -2194,22 +2277,22 @@
 
       knowledgePanel.innerHTML =
         '<div style="margin-bottom:8px;">' +
-          '<button type="button" class="mini-btn" onclick="manualReloadCloudBrain()">🔄 brain_weights.json再読込</button>' +
+          '<button type="button" class="mini-btn" onclick="manualReloadCloudBrain()">🔄 brain_weights.json確認</button>' +
           reloadNoteHtml +
         '</div>' +
-        '<strong>🧠 純粋会話' + TRANSFORMER_LAYERS + '層Transformer（' + EMBED_DIM + '次元・言葉吟味層・Wikipedia汚染遮断済）状態:</strong><br>' +
+        '<strong>🧠 純粋会話' + TRANSFORMER_LAYERS + '層Transformer（' + EMBED_DIM + '次元・言葉吟味層・Wikipedia完全隔離済）状態:</strong><br>' +
         jsonDetailHtml +
         '・最新言葉吟味層レポート: <b>' + lastCritiqueReport + '</b><br>' +
         '・日常会話.txt 読み込み量: <b>' + dailyChatChars.toLocaleString() + '文字</b>（ローカル会話エポック: <b>' + (memoryStore.chatEpochCount || 0) + '周完走</b>）<br>' +
-        '・純粋会話語彙辞書数: <b>' + vocabSize + '語</b>（Wikipedia単語混入: <b>0語・完全分離済</b>）<br>' +
+        '・純粋会話語彙辞書数: <b>' + vocabSize + '語</b>（Wikipedia単語混入: <b>0語・完全隔離済</b>）<br>' +
         '・最新コード診断ログ: <b>' + LAST_SELF_REPAIR_NOTE + '</b>（v' + SELF_CODE_VERSION + '）<br>' +
         '・長期パーソナル記憶: 名前=<b>' + userName + '</b> / 好み=<b>' + userLikes + '</b><br>' +
-        '・RAG検索専用辞書（knowledge.txt等）総量: <b>' + memoryStore.corpusText.length.toLocaleString() + '文字</b><br><br>' +
+        '・RAG検索専用辞書（knowledge.txt等）総量: <b>' + (memoryStore.ragCorpusText || '').length.toLocaleString() + '文字</b><br><br>' +
         prefixNote + (previewText || 'まだRAG検索データがありません');
     }
 
     // ==========================================
-    // brain_weights.json の取得・検証・純粋会話重みへの安全インポート
+    // brain_weights.json の取得・pureChatOnly 検証・安全ロード
     // ==========================================
     async function fetchCloudBrainWeights() {
       var brainData = null;
@@ -2236,8 +2319,10 @@
         }
       }
 
-      var isValidBrain = Boolean(
+      // saved.pureChatOnly === true の場合のみロード（旧Wikipedia混入 brain_weights.json は絶対に入れない）
+      var isPureValidBrain = Boolean(
         brainData &&
+        brainData.pureChatOnly === true &&
         Array.isArray(brainData.vocab) &&
         brainData.vocab.length > 1 &&
         Array.isArray(brainData.tokenEmbed) &&
@@ -2246,7 +2331,7 @@
         Array.isArray(brainData.Wout)
       );
 
-      if (!isValidBrain) {
+      if (!isPureValidBrain) {
         memoryStore.cloudEpochs = 0;
         memoryStore.cloudTrainedAt = '';
         memoryStore.cloudBrainStatus = 'not_found';
@@ -2270,8 +2355,7 @@
         embedDim: embedDim
       };
 
-      // 純粋会話語彙のみでモデルを構築し、brain_weights.jsonからは会話語彙に一致する重みだけを優先ロード
-      llmModel = new CafeUltraTransformer(brainData, buildChatCorpusText());
+      llmModel = new CafeUltraTransformer(brainData, buildPureChatCorpusText());
       memoryStore.savedWeights = llmModel.exportWeights();
       await saveToPermanentMemory();
 
@@ -2284,9 +2368,9 @@
 
       var loadedBrain = await fetchCloudBrainWeights();
       if (loadedBrain) {
-        cloudReloadMessage = '✅ 優先読込成功！（特訓' + memoryStore.cloudEpochs + '周 / ' + memoryStore.cloudTrainedAt + '）';
+        cloudReloadMessage = '✅ 純粋会話brain_weights.json読込成功！（特訓' + memoryStore.cloudEpochs + '周）';
       } else {
-        cloudReloadMessage = '⚠️ brain_weights.json はまだリポジトリに未作成です';
+        cloudReloadMessage = 'ℹ️ pureChatOnlyフラグ付きのbrain_weights.jsonは未作成のため純粋会話ローカル脳を使用中です';
       }
 
       updateStatusDisplay();
@@ -2350,7 +2434,7 @@
     }
 
     // ==========================================
-    // 純粋会話エポック学習専用ループ（Wikipedia記事は一切学習させない）
+    // 純粋会話エポック学習専用ループ（入力優先ポーズ対応）
     // ==========================================
     function trainPureChatEpochInBackground(announceMessage, isSilentBackground, onComplete) {
       if (isLearningNow) {
@@ -2359,8 +2443,10 @@
       }
       isLearningNow = true;
 
-      var prevWeights = llmModel ? llmModel.exportWeights() : memoryStore.savedWeights;
-      var currentChatCorpus = buildChatCorpusText();
+      var prevWeights = (llmModel && llmModel.exportWeights().pureChatOnly === true)
+        ? llmModel.exportWeights()
+        : (memoryStore.savedWeights && memoryStore.savedWeights.pureChatOnly === true ? memoryStore.savedWeights : null);
+      var currentChatCorpus = buildPureChatCorpusText();
       var nextModel = new CafeUltraTransformer(prevWeights, currentChatCorpus);
 
       var dynamicChatSteps = Math.max(MIN_CHAT_EPOCH_STEPS, nextModel.chatData.length + 20);
@@ -2368,7 +2454,7 @@
 
       function fastTrainLoop() {
         if (isSilentBackground && shouldPauseBackgroundLearning()) {
-          trainStatusEl.textContent = '⏸️ 入力中のため会話エポック学習を一時停止中（サクサク入力優先モード）';
+          trainStatusEl.textContent = '⏸️ 入力中のためエポック学習を一時停止中（サクサク入力優先モード）';
           setTimeout(fastTrainLoop, 250);
           return;
         }
@@ -2429,11 +2515,9 @@
         if (latestDailyChat) {
           memoryStore.dailyChatCorpusText = latestDailyChat;
         }
-        // WikipediaはRAG検索用辞書（memoryStore.corpusText）にのみ追加し、脳の重み学習には混ぜない
         var fetched = await fetchRandomWebArticles();
         storeKnowledgeInRagOnly(fetched.text, fetched.titles);
 
-        // 8層Transformerは純粋会話データのみを反復学習
         trainPureChatEpochInBackground(null, true);
       } catch (e) {}
     }
@@ -2446,7 +2530,7 @@
         if (loaded) {
           memoryStore = Object.assign({
             topics: [],
-            corpusText: '',
+            ragCorpusText: '',
             dailyChatCorpusText: '',
             chatHistory: [],
             lastDiscussedTopic: '',
@@ -2463,7 +2547,7 @@
           }, loaded);
         }
 
-        trainStatusEl.textContent = '📂 GitHubの 日常会話.txt・brain_weights.json・knowledge.txt を読み込み中...';
+        trainStatusEl.textContent = '📂 GitHubの 日常会話.txt・knowledge.txt を読み込み中...';
         var results = await Promise.all([
           fetchGitHubKnowledgeFile(),
           fetchGitHubDailyChatFile(),
@@ -2473,10 +2557,10 @@
         var dailyChatText = results[1];
         var brainData = results[2];
 
-        // 1. knowledge.txt はRAG検索専用メモリにのみ格納
-        if (githubText && memoryStore.corpusText.indexOf(githubText.slice(0, 25)) === -1) {
-          var merged = githubText + (memoryStore.corpusText ? '\n\n' : '') + memoryStore.corpusText;
-          memoryStore.corpusText = (MAX_MEMORY_CHARS === Infinity) ? merged : merged.slice(-MAX_MEMORY_CHARS);
+        // 1. knowledge.txt は質問用RAG検索辞書（ragCorpusText）にのみ格納
+        if (githubText && memoryStore.ragCorpusText.indexOf(githubText.slice(0, 25)) === -1) {
+          var merged = githubText + (memoryStore.ragCorpusText ? '\n\n' : '') + memoryStore.ragCorpusText;
+          memoryStore.ragCorpusText = (MAX_MEMORY_CHARS === Infinity) ? merged : merged.slice(-MAX_MEMORY_CHARS);
           if (memoryStore.topics.indexOf('GitHub知識ベース(knowledge.txt)') === -1) {
             memoryStore.topics.unshift('GitHub知識ベース(knowledge.txt)');
           }
@@ -2494,9 +2578,9 @@
           });
         }
 
-        // 4. brain_weights.json が優先ロードできた場合は、その重みをそのまま確定しWikipediaで上書きしない
-        if (brainData) {
-          llmModel = new CafeUltraTransformer(brainData, buildChatCorpusText());
+        // 4. pureChatOnly === true の brain_weights.json があれば優先適用、なければ純粋会話データのみで学習開始
+        if (brainData && brainData.pureChatOnly === true) {
+          llmModel = new CafeUltraTransformer(brainData, buildPureChatCorpusText());
           memoryStore.savedWeights = llmModel.exportWeights();
           progressBarEl.style.width = '100%';
           updateStatusDisplay();
@@ -2504,14 +2588,15 @@
           generateBtn.disabled = false;
           saveToPermanentMemory();
 
-          // 裏側でRAG検索用Wikipediaだけ静かに取得（脳の重みには触らない）
           fetchRandomWebArticles().then(function(fetched) {
             storeKnowledgeInRagOnly(fetched.text, fetched.titles);
             saveToPermanentMemory();
           }).catch(function() {});
         } else {
-          // brain_weights.json がまだ無い場合は、純粋会話データのみで8層Transformerを初期学習
-          llmModel = new CafeUltraTransformer(memoryStore.savedWeights, buildChatCorpusText());
+          var validLocalWeights = (memoryStore.savedWeights && memoryStore.savedWeights.pureChatOnly === true)
+            ? memoryStore.savedWeights
+            : null;
+          llmModel = new CafeUltraTransformer(validLocalWeights, buildPureChatCorpusText());
 
           fetchRandomWebArticles().then(function(fetched) {
             storeKnowledgeInRagOnly(fetched.text, fetched.titles);
@@ -2519,7 +2604,7 @@
 
           var isFirstEver = (!memoryStore.chatHistory || memoryStore.chatHistory.length === 0);
           var greeting = isFirstEver
-            ? 'やっほー！カフェ・LLMだよ☕ 今回からWikipediaの単語を会話脳から完全に切り離して、純粋な日常会話だけでおしゃべりできるように進化したよ！何でも気軽に話しかけてね！'
+            ? 'やっほー！カフェ・LLMだよ☕ 古いWikipediaの単語を完全に切り離して、純粋な日常会話だけでおしゃべりできるように進化したよ！何でも気軽に話しかけてね！'
             : null;
 
           trainPureChatEpochInBackground(greeting, false);
